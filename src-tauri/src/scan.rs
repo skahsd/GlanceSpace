@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     ffi::OsString,
     fs,
     os::windows::{
@@ -121,6 +121,18 @@ pub struct Page {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct View {
+    pub directory: NodeView,
+    pub items: Vec<NodeView>,
+    pub truncated: bool,
+    pub omitted_logical_size: u64,
+    pub omitted_disk_size: u64,
+    pub revision: u64,
+    pub branches: Vec<Branch>,
+}
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Branch {
+    pub directory: NodeView,
     pub items: Vec<NodeView>,
     pub truncated: bool,
     pub omitted_logical_size: u64,
@@ -650,28 +662,112 @@ impl Scan {
         })
     }
     pub fn view(&self, id: u32, metric: Metric) -> Result<View, String> {
+        self.expanded_view(id, metric, &[])
+    }
+    pub fn expanded_view(&self, id: u32, metric: Metric, expanded: &[u32]) -> Result<View, String> {
         let data = self.data.lock().unwrap();
-        if id as usize >= data.nodes.len() {
-            return Err("节点不存在".into());
+        if id as usize >= data.nodes.len() || !data.nodes[id as usize].is_dir {
+            return Err("目录不存在".into());
         }
-        let mut ids = child_ids(&data, id);
-        sort_ids(&data, &mut ids, metric);
-        let mut omitted_logical_size = 0u64;
-        let mut omitted_disk_size = 0u64;
-        let truncated = ids.len() > 5000;
-        for &extra in ids.iter().skip(5000) {
-            omitted_logical_size =
-                omitted_logical_size.saturating_add(data.nodes[extra as usize].logical_size);
-            omitted_disk_size =
-                omitted_disk_size.saturating_add(data.nodes[extra as usize].disk_size);
+        if expanded.len() > 16 {
+            return Err("最多展开 16 个目录".into());
         }
-        ids.truncate(5000);
+        let wanted: HashSet<u32> = expanded.iter().copied().collect();
+        for &entry in &wanted {
+            let node = data.nodes.get(entry as usize).ok_or("展开节点不存在")?;
+            if !node.is_dir || entry == id {
+                return Err("展开节点必须是当前视图内的子目录".into());
+            }
+            let mut parent = node.parent;
+            while parent != id {
+                if parent == NONE || !wanted.contains(&parent) {
+                    return Err("展开节点不在当前可见目录内".into());
+                }
+                parent = data.nodes[parent as usize].parent;
+            }
+        }
+        // Reserve a fair slice for every expanded branch; the whole IPC stays bounded.
+        let quota = 5000 / (wanted.len() + 1);
+        let root = view_branch(&data, id, metric, quota, &wanted);
+        let mut queue: Vec<u32> = root
+            .items
+            .iter()
+            .filter(|n| wanted.contains(&n.id))
+            .map(|n| n.id)
+            .collect();
+        let mut branches = Vec::new();
+        let mut cursor = 0;
+        while cursor < queue.len() {
+            let branch = view_branch(&data, queue[cursor], metric, quota, &wanted);
+            queue.extend(
+                branch
+                    .items
+                    .iter()
+                    .filter(|n| wanted.contains(&n.id))
+                    .map(|n| n.id),
+            );
+            branches.push(branch);
+            cursor += 1;
+        }
         Ok(View {
-            items: ids.into_iter().map(|i| node_view(&data, i)).collect(),
-            truncated,
-            omitted_logical_size,
-            omitted_disk_size,
+            directory: root.directory,
+            items: root.items,
+            truncated: root.truncated,
+            omitted_logical_size: root.omitted_logical_size,
+            omitted_disk_size: root.omitted_disk_size,
+            revision: data.revision,
+            branches,
         })
+    }
+
+    pub fn external_path(&self, id: u32, reveal: bool) -> Result<PathBuf, String> {
+        let data = self.data.lock().unwrap();
+        let node = data.nodes.get(id as usize).ok_or("节点不存在")?;
+        let is_dir = node.is_dir;
+        let path = node_path(&data, id);
+        if !path.starts_with(&data.root) {
+            return Err("目标不在扫描范围内".into());
+        }
+        drop(data);
+        for ancestor in path.ancestors() {
+            let meta = fs::symlink_metadata(ancestor)
+                .map_err(|e| format!("项目已不存在或无法访问：{e}"))?;
+            let unsafe_attributes = meta.file_attributes() & (REPARSE | OFFLINE | RECALL) != 0;
+            if unsafe_attributes && !(reveal && ancestor == path) {
+                return Err("不能打开重解析点或云端占位项目，请使用资源管理器处理".into());
+            }
+            if ancestor == path && meta.is_dir() != is_dir {
+                return Err("项目类型在扫描后发生变化，请重新扫描".into());
+            }
+        }
+        Ok(path)
+    }
+}
+fn view_branch(
+    data: &Data,
+    id: u32,
+    metric: Metric,
+    quota: usize,
+    wanted: &HashSet<u32>,
+) -> Branch {
+    let mut ids = child_ids(data, id);
+    sort_ids(data, &mut ids, metric);
+    ids.sort_by_key(|entry| !wanted.contains(entry));
+    let mut omitted_logical_size = 0u64;
+    let mut omitted_disk_size = 0u64;
+    let truncated = ids.len() > quota;
+    for &extra in ids.iter().skip(quota) {
+        omitted_logical_size =
+            omitted_logical_size.saturating_add(data.nodes[extra as usize].logical_size);
+        omitted_disk_size = omitted_disk_size.saturating_add(data.nodes[extra as usize].disk_size);
+    }
+    ids.truncate(quota);
+    Branch {
+        directory: node_view(data, id),
+        items: ids.into_iter().map(|i| node_view(data, i)).collect(),
+        truncated,
+        omitted_logical_size,
+        omitted_disk_size,
     }
 }
 fn child_ids(data: &Data, id: u32) -> Vec<u32> {
@@ -702,8 +798,7 @@ fn sort_ids(data: &Data, ids: &mut [u32], metric: Metric) {
             .then_with(|| a.name.cmp(&b.name))
     });
 }
-fn node_view(data: &Data, id: u32) -> NodeView {
-    let node = &data.nodes[id as usize];
+fn node_path(data: &Data, id: u32) -> PathBuf {
     let mut parts = Vec::new();
     let mut current = id;
     while current != 0 {
@@ -715,6 +810,11 @@ fn node_view(data: &Data, id: u32) -> NodeView {
     for part in parts.iter().rev() {
         path.push(part);
     }
+    path
+}
+fn node_view(data: &Data, id: u32) -> NodeView {
+    let node = &data.nodes[id as usize];
+    let path = node_path(data, id);
     let complete = node.unknown == 0 && (!node.is_dir || data.phase == "completed");
     let state = if node.skipped > 0 && node.child_count == 0 {
         "skipped"

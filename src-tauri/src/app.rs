@@ -91,12 +91,76 @@ async fn get_view(
     scan_id: u64,
     node_id: u32,
     metric: Metric,
+    expanded: Vec<u32>,
     manager: State<'_, Manager>,
 ) -> Result<View, String> {
     let scan = manager.get(scan_id)?;
-    tauri::async_runtime::spawn_blocking(move || scan.view(node_id, metric))
+    tauri::async_runtime::spawn_blocking(move || scan.expanded_view(node_id, metric, &expanded))
         .await
         .map_err(|e| e.to_string())?
+}
+
+async fn external_action(
+    scan: Scan,
+    node_id: u32,
+    owner: usize,
+    open_with: bool,
+) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        std::thread::spawn(move || {
+            if open_with {
+                let result = scan.external_path(node_id, false).and_then(|path| {
+                    if path.is_dir() {
+                        return Err("目录请使用资源管理器打开".into());
+                    }
+                    // shortcut: Shell takes a path after validation; deletion requires atomic object revalidation in P3.
+                    crate::shell::open_with(&path, owner)
+                });
+                if let Err(error) = result {
+                    let path = scan.external_path(node_id, true)?;
+                    crate::shell::reveal(&path, false, owner)
+                        .map_err(|fallback| format!("{error}；{fallback}"))?;
+                    return Ok(Some(format!("{error}；已在资源管理器中定位")));
+                }
+            } else {
+                let path = scan.external_path(node_id, true)?;
+                use std::os::windows::fs::MetadataExt;
+                let meta = std::fs::symlink_metadata(&path).map_err(|e| e.to_string())?;
+                let open_directory = meta.is_dir()
+                    && meta.file_attributes() & (0x400 | 0x1000 | 0x40000 | 0x400000) == 0;
+                crate::shell::reveal(&path, open_directory, owner)?;
+            }
+            Ok(None)
+        })
+        .join()
+        .map_err(|_| "系统文件操作线程异常".to_string())?
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn open_with(
+    scan_id: u64,
+    node_id: u32,
+    window: tauri::Window,
+    manager: State<'_, Manager>,
+) -> Result<Option<String>, String> {
+    let scan = manager.get(scan_id)?;
+    let owner = window.hwnd().map_err(|e| e.to_string())?.0 as usize;
+    external_action(scan, node_id, owner, true).await
+}
+
+#[tauri::command]
+async fn show_in_explorer(
+    scan_id: u64,
+    node_id: u32,
+    window: tauri::Window,
+    manager: State<'_, Manager>,
+) -> Result<Option<String>, String> {
+    let scan = manager.get(scan_id)?;
+    let owner = window.hwnd().map_err(|e| e.to_string())?.0 as usize;
+    external_action(scan, node_id, owner, false).await
 }
 
 pub fn run() {
@@ -109,8 +173,26 @@ pub fn run() {
             control_scan,
             get_progress,
             get_children,
-            get_view
+            get_view,
+            open_with,
+            show_in_explorer
         ])
         .run(tauri::generate_context!())
         .expect("GlanceSpace failed to start");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn manager_rejects_missing_and_replaced_scan_ids() {
+        let manager = Manager::default();
+        assert!(manager.get(1).is_err());
+        let root = tempfile::tempdir().unwrap();
+        let scan = Scan::new(root.path()).unwrap();
+        *manager.current.lock().unwrap() = Some((2, scan));
+        assert!(manager.get(1).is_err());
+        assert!(manager.get(2).is_ok());
+    }
 }

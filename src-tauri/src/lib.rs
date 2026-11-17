@@ -1,4 +1,6 @@
 pub mod scan;
+#[cfg(feature = "desktop")]
+mod shell;
 
 #[cfg(feature = "desktop")]
 mod app;

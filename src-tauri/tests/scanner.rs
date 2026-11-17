@@ -108,6 +108,8 @@ fn junction_is_visible_but_never_traversed_and_cannot_be_a_root() {
     let children = scan.children(Query::new(0)).unwrap();
     assert_eq!(children.total, 1);
     assert_eq!(children.items[0].state, "skipped");
+    assert!(scan.external_path(children.items[0].id, false).is_err());
+    assert!(scan.external_path(children.items[0].id, true).is_ok());
     assert_eq!(scan.progress().files, 0);
     assert_eq!(scan.progress().skipped, 1);
     assert!(!scan.node(0).unwrap().complete);
@@ -207,6 +209,7 @@ fn root_replaced_by_junction_after_validation_stays_incomplete() {
         .output()
         .unwrap();
     assert!(result.status.success());
+    assert!(scan.external_path(0, false).is_err());
     scan.spawn(|_| {}).unwrap();
     finished(&scan);
     assert_eq!(scan.progress().files, 0);
@@ -225,4 +228,70 @@ fn invalid_queries_do_not_silently_return_misleading_results() {
     query.min_size = Some(10);
     query.max_size = Some(5);
     assert!(scan.children(query).is_err());
+}
+
+#[test]
+fn expanded_view_is_bounded_and_keeps_each_directory_total_separate() {
+    let root = tempfile::tempdir().unwrap();
+    fs::create_dir(root.path().join("nested")).unwrap();
+    fs::write(root.path().join("nested/a"), b"123").unwrap();
+    fs::write(root.path().join("sibling"), b"1").unwrap();
+    let scan = Scan::new(root.path()).unwrap();
+    scan.spawn(|_| {}).unwrap();
+    finished(&scan);
+    let page = scan.children(Query::new(0)).unwrap();
+    let nested = page.items.iter().find(|n| n.is_dir).unwrap();
+    let view = scan
+        .expanded_view(0, Metric::Logical, &[nested.id])
+        .unwrap();
+    assert_eq!(view.items.iter().map(|n| n.logical_size).sum::<u64>(), 4);
+    assert_eq!(view.branches.len(), 1);
+    assert_eq!(view.branches[0].items[0].logical_size, 3);
+    assert!(scan.expanded_view(nested.id, Metric::Disk, &[0]).is_err());
+    assert!(scan.expanded_view(0, Metric::Disk, &[99999]).is_err());
+    assert!(scan
+        .expanded_view(0, Metric::Disk, &[nested.id; 17])
+        .is_err());
+}
+
+#[test]
+fn external_paths_require_a_current_existing_node() {
+    let root = tempfile::tempdir().unwrap();
+    fs::write(root.path().join("中文 file.txt"), b"test").unwrap();
+    let scan = Scan::new(root.path()).unwrap();
+    scan.spawn(|_| {}).unwrap();
+    finished(&scan);
+    let file = &scan.children(Query::new(0)).unwrap().items[0];
+    assert!(scan.external_path(99999, false).is_err());
+    assert!(scan
+        .external_path(file.id, false)
+        .unwrap()
+        .ends_with("中文 file.txt"));
+    fs::remove_file(root.path().join("中文 file.txt")).unwrap();
+    assert!(scan.external_path(file.id, false).is_err());
+}
+
+#[test]
+fn expanded_view_truncates_without_losing_bytes_or_exceeding_total_budget() {
+    let root = tempfile::tempdir().unwrap();
+    fs::create_dir(root.path().join("nested")).unwrap();
+    for index in 0..5100 {
+        fs::write(
+            root.path().join("nested").join(format!("{index}.txt")),
+            b"123",
+        )
+        .unwrap();
+    }
+    let scan = Scan::new(root.path()).unwrap();
+    scan.spawn(|_| {}).unwrap();
+    finished(&scan);
+    let id = scan.children(Query::new(0)).unwrap().items[0].id;
+    let view = scan.expanded_view(0, Metric::Logical, &[id]).unwrap();
+    assert!(view.items.len() + view.branches.iter().map(|b| b.items.len()).sum::<usize>() <= 5000);
+    let branch = &view.branches[0];
+    assert!(branch.truncated);
+    assert_eq!(
+        branch.items.iter().map(|n| n.logical_size).sum::<u64>() + branch.omitted_logical_size,
+        15300
+    );
 }

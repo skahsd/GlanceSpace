@@ -9,7 +9,28 @@ export interface Progress {
   errors: number; skipped: number; unknown: number; revision: number; elapsedMs: number; message: string | null;
 }
 export interface Page { directory: FsNode; breadcrumbs: FsNode[]; items: FsNode[]; total: number; revision: number }
-export interface TreeView { items: FsNode[]; truncated: boolean; omittedLogicalSize: number; omittedDiskSize: number }
+export interface TreeBranch { directory: FsNode; items: FsNode[]; truncated: boolean; omittedLogicalSize: number; omittedDiskSize: number }
+export interface TreeView extends TreeBranch { revision: number; branches: TreeBranch[] }
+export type MapMode = 'expand' | 'navigate';
+
+export function branchItems(branch: TreeBranch): FsNode[] {
+  return branch.truncated ? [...branch.items, { ...branch.directory, id: -branch.directory.id - 1,
+    parent: branch.directory.id, name: '其他项目（在列表查看）', isDir: false,
+    logicalSize: branch.omittedLogicalSize, diskSize: branch.omittedDiskSize, childCount: 0 }] : branch.items;
+}
+
+export function collapseExpanded(expanded: number[], id: number, nodes: FsNode[]): number[] {
+  const parents = new Map(nodes.map(n => [n.id, n.parent]));
+  return expanded.filter(entry => {
+    let current: number | null | undefined = entry;
+    const seen = new Set<number>();
+    while (current !== null && current !== undefined && !seen.has(current)) {
+      if (current === id) return false;
+      seen.add(current); current = parents.get(current);
+    }
+    return true;
+  });
+}
 export interface History { ids: number[]; index: number }
 export const emptyProgress: Progress = { phase: 'idle', files: 0, directories: 0, logicalSize: 0, diskSize: 0, errors: 0, skipped: 0, unknown: 0, revision: 0, elapsedMs: 0, message: null };
 export function formatBytes(value: number | null): string {

@@ -4,7 +4,7 @@
 |---|---|
 | 更新日期 | 2026-11-17 |
 | 项目状态 | **P0 垂直切片已实现，尚未进入 P1**；完成调研、方案设计和首版标准确认 |
-| 工作目录 | `D:\Code\GlanceSpace`（已 `git init`，main 分支，无提交） |
+| 工作目录 | `D:\Code\GlanceSpace`（Git 分支 `codex/p0-analyzer`，已推送初版；本轮界面改动已在本地提交，尚未推送） |
 | 文档用途 | 给新会话/新协作者接手，自包含，无需读历史对话 |
 | 读者 | 后续接手的 AI 会话或开发者 |
 
@@ -54,8 +54,8 @@
 
 ## 2. 当前代码状态
 
-- `D:\Code\GlanceSpace\` 当前在 `codex/p0-analyzer` 分支，已有 P0 业务代码、测试和文档，尚无提交；参考项目仍只读。
-- git 身份已配置：`hh <1270104857@qq.com>`，分支 `main`。
+- `D:\Code\GlanceSpace\` 当前在 `codex/p0-analyzer` 分支，已有 P0 业务代码、测试和文档；初版提交 `f5f7178`，IDE 忽略提交 `51f8c4f`；参考项目仍只读。
+- 远程为 `https://github.com/skahsd/GlanceSpace.git`，保持私有；本轮不改变可见性，不自动推送。
 - 参考项目 `D:\Code\SpaceSniffer\` 是**别人的仓库**（非官方镜像，只有二进制和 PDF），可以读、**不要改、不要往里提交**。
 
 ---
@@ -498,9 +498,21 @@ propose_cleanup(query)    -> Vec<{node_id, size, verdict, reason}>
 
 ### 12.1 P0 实现状态（2026-11-17）
 
-- 已实现：Tauri 2 + Rust + React/TypeScript；本地固定磁盘列表；目录扫描；逻辑大小与分配磁盘占用；未知/错误/跳过状态；暂停、继续、取消；分页列表、名称/类型/大小/年龄过滤；Canvas squarified treemap；列表与 treemap 选中、悬停、双击钻取、前进后退和回根。
-- 已验证：Rust 11 项扫描测试、前端 5 项行为测试、`cargo fmt --check`、`cargo clippy -D warnings`、`npm run build`、Tauri debug 构建；实际扫描 `D:\Code\cc-switch` 的结果见 [docs/P0-VERIFICATION.md](docs/P0-VERIFICATION.md)。
+- 已实现：Tauri 2 + Rust + React/TypeScript；本地固定磁盘列表；目录扫描；逻辑大小与分配磁盘占用；未知/错误/跳过状态；暂停、继续、取消；分页列表、名称/类型/大小/年龄过滤；Canvas squarified treemap；列表选中与双击钻取；treemap 选中、悬停、单击展开/切换、嵌套目录、平滑动画；前进后退、回根、仅矩阵及右键系统打开。
+- 已验证：Rust 14 项扫描测试与 1 项扫描身份测试、前端 10 项行为测试、`cargo fmt --check`、`cargo clippy -D warnings`、`npm run build`、Tauri debug 构建；实际扫描 `D:\Code\cc-switch` 的结果见 [docs/P0-VERIFICATION.md](docs/P0-VERIFICATION.md)。
 - 尚未验收：完整 `C:\` 扫描、百万文件性能、内存 < 1 GB、与资源管理器误差 < 0.1% 的整盘基准。没有据此宣称 P0 DoD 全部完成。
+
+---
+
+### 12.2 界面交互调整（2026-11-17）
+
+- 页面固定在窗口内，只有目录表格滚动；移除大侧栏、宣传标题和重复说明，统计与详情紧凑展示。
+- 矩阵工具栏的“仅矩阵”隐藏其他模块，按钮或 Esc 恢复；保留浏览与扫描状态。
+- 默认展开模式：单击至少 160×100 CSS px 的目录块原位展开，过小进入目录；切换模式单击即进入。矩阵无独立双击动作，列表保留双击钻取。展开分支标题可收起。
+- 批量视图最多 5000 个真实节点、16 个展开目录；各分支公平配额截断并分别汇总遗漏大小。刷新 350 ms、Canvas 过渡约 300 ms；尊重减少动态效果设置。
+- 共用右键菜单提供 Windows 原生“打开方式…”和资源管理器打开/定位；按 scan/node ID 校验路径，在独立 STA 线程调用 Shell。取消不兜底，失败报告并尝试定位。
+- 用户主动打开外部应用属于已授权新增范围；扫描仍只读取元数据，外部应用可能编辑/保存文件。本项目无删除入口。
+- 受控 IPC 浏览器检查覆盖四组视口、展开/切换、小块回退、仅矩阵、鼠标/键盘菜单、过期响应、持续刷新与控制。真实临时目录扫描通过；原生选择框和 Explorer 定位尚未完成端到端验证，不能宣称已通过。
 
 ---
 
@@ -513,7 +525,7 @@ propose_cleanup(query)    -> Vec<{node_id, size, verdict, reason}>
 
 背景：要做 SpaceSniffer 等价的磁盘空间分析器，加 AI 清理顾问。
 架构已定：规则引擎判决、LLM 只解释、默认回收站删除、有硬编码安全闸门。
-现在还没写代码。
+P0 已有扫描与可交互矩阵；先核对当前 Git 状态和 docs/P0-VERIFICATION.md，再继续任务。
 
 本轮任务：<在这里写你要做的事，例如"搭 P0 骨架：Tauri 2 + Rust 扫描内核 + 可点击的 treemap">
 
@@ -555,3 +567,5 @@ $pe = [BitConverter]::ToInt32($b, 0x3C)
 | 2026-11-16 | 产品 owner 确认默认方案；新增 AGENTS.md 项目标准，更新 Windows 范围、扫描与 IPC、AI 隐私、只读规则、回收站及二次确认策略，移除已解决的未决项。尚未编写业务代码 |
 | 2026-11-17 | 核对并记录 REA、cc-switch、SpaceSniffer 三个本地只读参考目录；未安装或运行 REA，未复制参考代码 |
 | 2026-11-17 | 完成 P0 垂直切片：Rust 扫描、双口径大小、Tauri IPC、React/Canvas treemap、列表与过滤；新增 README、P0 验证记录和测试；整盘性能与精度仍待实测 |
+
+| 2026-11-17 | 收敛窗口布局，新增矩阵展开/切换模式、动画、仅矩阵和右键系统打开；增加分层视图与路径校验测试，详见验证记录 |
