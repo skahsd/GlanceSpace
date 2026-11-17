@@ -38,6 +38,12 @@
 - reparse point、云端占位条目、无权限及扫描中消失的项目会保留在树或列表中，并标记未知/部分/跳过状态。
 - treemap 按需原位展开子目录或进入目录；每次视图最多 5000 个真实节点、16 个展开目录。各分支公平配额截断，遗漏已知大小分别汇总为“其他项目”。列表分页仍可访问全部子项；列表过滤不改变 treemap。
 
+## 盘符根目录标题修复（2026-11-17）
+
+- 新增回归测试，在固定磁盘根目录创建扫描对象但不启动扫描；修复前名称字段包含 `\\?\` 导致断言失败，修复后名称和显示路径均为常见盘符形式，内部路径保持规范化长路径格式，普通目录名不变。
+- `cargo test --manifest-path src-tauri/Cargo.toml --quiet`：15 项扫描测试和 1 项 Manager 测试通过。界面验收由用户手动完成，本轮未操作浏览器或桌面窗口。
+- 合并前复验：`npm test`（10 项）、`npm run build` 和 `cargo fmt --manifest-path src-tauri/Cargo.toml --check` 通过。完整 `cargo test` 在构建阶段因 `target/debug/glancespace.exe` 拒绝访问而中止；保留运行窗口，改用 `cargo test --manifest-path src-tauri/Cargo.toml --lib --quiet`（1 项）与 `cargo test --manifest-path src-tauri/Cargo.toml --no-default-features --test scanner --quiet`（15 项），均通过。本轮未重新构建桌面可执行文件，未做 GUI 验收。
+
 ## 界面调整验证（2026-11-17）
 
 - 10 项前端单元测试通过：新增嵌套面积与边界、命中、动画插值/中途更新、展开集合收起及分支汇总 ID。

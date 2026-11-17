@@ -296,7 +296,10 @@ fn disk_size(path: &Path) -> Result<u64, String> {
 impl Scan {
     pub fn new(root: &Path) -> Result<Self, String> {
         let root = validate_root(root)?;
-        let label = root.file_name().unwrap_or(root.as_os_str()).to_os_string();
+        let label = root
+            .file_name()
+            .map(OsString::from)
+            .unwrap_or_else(|| display_path(&root).into());
         Ok(Self {
             data: Arc::new(Mutex::new(Data {
                 root,

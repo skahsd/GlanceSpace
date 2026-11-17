@@ -13,6 +13,26 @@ fn finished(scan: &Scan) {
 }
 
 #[test]
+fn drive_root_label_uses_a_readable_path_without_changing_the_internal_path() {
+    let temporary = tempfile::tempdir().unwrap();
+    let root = temporary.path().ancestors().last().unwrap();
+    let canonical = fs::canonicalize(root).unwrap();
+    let expected = canonical.to_string_lossy();
+    let expected = expected.strip_prefix(r"\\?\").unwrap_or(&expected);
+    let scan = Scan::new(root).unwrap();
+    let node = scan.node(0).unwrap();
+    assert_eq!(node.name, expected);
+    assert_eq!(node.path, expected);
+    assert_eq!(scan.external_path(0, false).unwrap(), canonical);
+
+    let directory = Scan::new(temporary.path()).unwrap().node(0).unwrap();
+    assert_eq!(
+        directory.name,
+        temporary.path().file_name().unwrap().to_string_lossy()
+    );
+}
+
+#[test]
 fn aggregates_nested_files_once_and_filters_without_changing_totals() {
     let root = tempfile::tempdir().unwrap();
     fs::write(root.path().join("first.txt"), b"abc").unwrap();
