@@ -1,3 +1,4 @@
+pub mod rules;
 pub mod scan;
 #[cfg(feature = "desktop")]
 mod shell;
