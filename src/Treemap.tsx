@@ -13,8 +13,8 @@ function color(node: FsNode): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
-export default function Treemap({ items, branches, metric, selected, onActivate, onSelect, onContext, onCollapse }: {
-  items: FsNode[]; branches: Map<number, FsNode[]>; metric: Metric; selected: number | undefined;
+export default function Treemap({ items, branches, metric, fontSize, selected, onActivate, onSelect, onContext, onCollapse }: {
+  items: FsNode[]; branches: Map<number, FsNode[]>; metric: Metric; fontSize: number; selected: number | undefined;
   onActivate: (rect: Rect) => void; onSelect: (node: FsNode) => void;
   onContext: (node: FsNode, x: number, y: number) => void; onCollapse: (ids: number[]) => void;
 }) {
@@ -27,6 +27,13 @@ export default function Treemap({ items, branches, metric, selected, onActivate,
   collapseRef.current = onCollapse;
   const drawRef = useRef<() => void>(() => {});
   const [size, setSize] = useState({ width: 0, height: 0 });
+  const [ratio, setRatio] = useState(() => window.devicePixelRatio || 1);
+  useEffect(() => {
+    const resolution = window.matchMedia('(resolution: ' + ratio + 'dppx)');
+    const update = () => setRatio(window.devicePixelRatio || 1);
+    resolution.addEventListener('change', update);
+    return () => resolution.removeEventListener('change', update);
+  }, [ratio]);
   const [hover, setHover] = useState<{ node: FsNode; x: number; y: number } | null>(null);
   const [reduced, setReduced] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   useEffect(() => {
@@ -43,12 +50,11 @@ export default function Treemap({ items, branches, metric, selected, onActivate,
   useEffect(() => {
     const element = canvas.current;
     if (!element) return;
-    const ratio = window.devicePixelRatio || 1;
-    element.width = Math.floor(size.width * ratio);
-    element.height = Math.floor(size.height * ratio);
+    element.width = Math.round(size.width * ratio);
+    element.height = Math.round(size.height * ratio);
     const ctx = element.getContext('2d');
     if (!ctx) return;
-    ctx.scale(ratio, ratio);
+    ctx.setTransform(element.width / (size.width || 1), 0, 0, element.height / (size.height || 1), 0, 0);
     const target = layout(items, size.width, size.height, metric, branches);
     if (size.width > 0 && size.height > 0) {
       const small = target.filter(r => branches.has(r.node.id) && (r.width < 160 || r.height < 100)).map(r => r.node.id);
@@ -75,12 +81,12 @@ export default function Treemap({ items, branches, metric, selected, onActivate,
           ctx.strokeStyle = '#c3f5de'; ctx.lineWidth = 3;
           ctx.strokeRect(x + 2, y + 2, Math.max(0, width - 4), Math.max(0, height - 4));
         }
-        if (width > 68 && height > 22) {
-          ctx.beginPath(); ctx.rect(x + 6, y + 4, Math.max(0, width - 12), rect.expanded ? 18 : height - 8); ctx.clip();
-          ctx.fillStyle = '#fff'; ctx.font = '500 12px "Segoe UI", "Microsoft YaHei", sans-serif';
+        if (width > fontSize * 5 && height >= fontSize + (rect.expanded ? 6 : 14)) {
+          ctx.beginPath(); ctx.rect(x + 6, y + 4, Math.max(0, width - 12), rect.expanded ? 20 : height - 8); ctx.clip();
+          ctx.fillStyle = '#fff'; ctx.font = '500 ' + fontSize + 'px "Segoe UI", "Microsoft YaHei", sans-serif';
           ctx.fillText(`${rect.expanded ? '⊟ ' : node.isDir ? '▣ ' : ''}${node.name}`, x + 8, y + (rect.expanded ? 5 : 9));
           if (height > 50 && !rect.expanded) {
-            ctx.fillStyle = '#ffffffb8'; ctx.font = '11px "Segoe UI", sans-serif';
+            ctx.fillStyle = '#ffffffb8'; ctx.font = Math.max(12, fontSize - 1) + 'px "Segoe UI", sans-serif';
             ctx.fillText(`${node.unknown ? '≥ ' : ''}${formatBytes(metricValue(node, metric))}`, x + 8, y + 30);
           }
         }
@@ -98,7 +104,7 @@ export default function Treemap({ items, branches, metric, selected, onActivate,
     }
     frame = requestAnimationFrame(animate);
     return () => { cancelAnimationFrame(frame); drawRef.current = () => {}; };
-  }, [items, branches, size, metric, reduced]);
+  }, [items, branches, size, ratio, metric, fontSize, reduced]);
   useEffect(() => { drawRef.current(); }, [selected]);
   const target = (event: React.MouseEvent<HTMLCanvasElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect();
