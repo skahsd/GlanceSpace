@@ -8,8 +8,10 @@ test('saved module choices and valid size restore even after reload', () => {
   assert.deepEqual(readView('{'), defaultView);
 });
 
-test('at least one disk browser stays visible after a toggle or invalid stored config', () => {
-  const withoutMap = toggleModule(defaultView, 'map');
-  assert.equal(toggleModule(withoutMap, 'list'), withoutMap);
-  assert.deepEqual(readView('{"font":99,"modules":{"map":false,"list":false}}').modules, { ...defaultView.modules, list: false });
+test('the matrix stays visible while list and details remain configurable', () => {
+  assert.deepEqual(toggleModule(defaultView, 'map'), defaultView);
+  const withoutList = toggleModule(defaultView, 'list');
+  assert.deepEqual(withoutList.modules, { map: true, list: false, details: true });
+  assert.deepEqual(toggleModule(withoutList, 'details').modules, { map: true, list: false, details: false });
+  assert.deepEqual(readView('{"font":99,"modules":{"map":false,"list":false}}').modules, { map: true, list: false, details: true });
 });

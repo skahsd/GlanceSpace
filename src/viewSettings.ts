@@ -11,12 +11,13 @@ export function readView(raw: string | null): ViewSettings {
     const value = JSON.parse(raw ?? 'null');
     const modules = { ...defaultView.modules };
     for (const key of moduleKeys) if (typeof value?.modules?.[key] === 'boolean') modules[key] = value.modules[key];
-    if (!modules.map && !modules.list) modules.map = true;
+    modules.map = true;
     return { modules, font: fontSizes.find(size => size === value?.font) ?? defaultView.font };
   } catch { return defaultView; }
 }
 
 export function toggleModule(view: ViewSettings, key: Module): ViewSettings {
+  if (key === 'map') return view;
   const modules = { ...view.modules, [key]: !view.modules[key] };
-  return modules.map || modules.list ? { ...view, modules } : view;
+  return { ...view, modules: { ...modules, map: true } };
 }
