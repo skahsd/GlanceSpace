@@ -28,3 +28,269 @@
 .scan-status{flex:none;white-space:nowrap}
 .map-totals{display:flex;align-items:center;justify-content:flex-end;gap:6px 14px;flex-wrap:wrap;min-width:0}.map-totals span,.panel-caption>strong{white-space:nowrap}.map-totals b{color:#d9e4ee;font-weight:600}
 .map-only .scan-bar{padding:6px 8px;border-bottom:1px solid var(--line)}
+
+
+/* visual refresh */
+.app-shell {
+  --app-bg: #0a111a;
+  --surface: #121d2a;
+  --surface-raised: #182638;
+  --surface-soft: #1d2d40;
+  --line-strong: #3a5269;
+  --text: #e6f0f7;
+  --muted-strong: #a8b9c8;
+  --accent-soft: #183b3a;
+  --accent-strong: #a0edc8;
+  background: var(--app-bg);
+  color: var(--text);
+  color-scheme: dark;
+}
+.app-shell[data-theme="light"] {
+  --app-bg: #edf2f6;
+  --surface: #ffffff;
+  --surface-raised: #f7fafc;
+  --surface-soft: #e9f0f5;
+  --line-strong: #b9c8d5;
+  --text: #1b2a38;
+  --muted-strong: #5d7182;
+  --accent-soft: #d8f2e7;
+  --accent-strong: #126c51;
+  color-scheme: light;
+}
+.app-shell .main {
+  padding: 14px;
+  gap: 12px;
+}
+.app-shell .scan-bar {
+  min-height: 50px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--surface-raised), var(--surface));
+  box-shadow: 0 8px 24px #0002;
+}
+.app-shell .app-name {
+  color: var(--accent-strong);
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+.app-shell .path-field {
+  border-color: var(--line-strong);
+  background: var(--surface);
+  box-shadow: inset 0 1px 2px #0002;
+}
+.app-shell .path-field:focus-within {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px #8be2bc33, inset 0 1px 2px #0002;
+}
+.app-shell .button,
+.app-shell .icon-button,
+.app-shell .navigation button {
+  transition: background .16s ease, border-color .16s ease, color .16s ease, transform .16s ease;
+}
+.app-shell .button {
+  border: 1px solid transparent;
+  font-weight: 600;
+}
+.app-shell .button.primary {
+  border-color: #9aefc955;
+  background: linear-gradient(135deg, #8be2bc, #64cda3);
+  box-shadow: 0 5px 14px #43b38a33;
+}
+.app-shell .button.primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.app-shell .button.subtle,
+.app-shell .icon-button,
+.app-shell .navigation button {
+  border-color: var(--line-strong);
+  background: var(--surface-soft);
+}
+.app-shell .button.subtle:hover:not(:disabled),
+.app-shell .icon-button:hover,
+.app-shell .navigation button:hover:not(:disabled) {
+  border-color: var(--green);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.app-shell .button.danger {
+  border-color: #a9636b88;
+  background: #542b36;
+}
+.app-shell[data-theme="light"] .button.danger {
+  background: #f9e3e6;
+  color: #8d2d3c;
+}
+.app-shell .explorer,
+.app-shell .list-panel {
+  border-color: var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px #0002;
+}
+.app-shell .explorer-toolbar,
+.app-shell .list-toolbar {
+  background: var(--surface-raised);
+  border-color: var(--line-strong);
+}
+.app-shell .explorer-toolbar {
+  padding: 9px 10px;
+}
+.app-shell .segmented {
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+}
+.app-shell .segmented button {
+  color: var(--muted-strong);
+}
+.app-shell .segmented button.chosen {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  box-shadow: inset 0 0 0 1px #8be2bc44;
+}
+.app-shell .map-panel {
+  padding: 10px;
+  gap: 8px;
+}
+.app-shell .panel-caption {
+  min-height: 32px;
+  padding: 0 2px;
+}
+.app-shell .panel-caption strong {
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+.app-shell .map-totals {
+  gap: 6px 16px;
+}
+.app-shell .map-totals b {
+  color: var(--accent-strong);
+}
+.app-shell .map-canvas {
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--app-bg);
+  box-shadow: inset 0 0 0 1px #0002, 0 8px 22px #0002;
+}
+.app-shell .map-legend {
+  padding: 5px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface-raised);
+}
+.app-shell .inspector {
+  width: clamp(220px, 25%, 290px);
+  padding: 16px;
+  border-color: var(--line-strong);
+  background: var(--surface-raised);
+}
+.app-shell .inspector h2 {
+  color: var(--text);
+  font-weight: 700;
+}
+.app-shell .detail-path {
+  margin: 10px 0;
+  padding: 8px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.app-shell .detail-path:hover {
+  border-color: var(--green);
+  color: var(--accent-strong);
+}
+.app-shell .state-chip {
+  border: 1px solid #8be2bc44;
+}
+.app-shell .state-chip.warning {
+  border-color: #d7b16866;
+}
+.app-shell .list-toolbar {
+  padding: 10px 12px;
+}
+.app-shell .list-toolbar > strong {
+  color: var(--text);
+  font-weight: 700;
+}
+.app-shell .table-wrap {
+  background: var(--surface);
+}
+.app-shell table thead {
+  background: var(--surface-raised);
+  color: var(--muted-strong);
+}
+.app-shell table tbody tr {
+  border-color: var(--line-strong);
+}
+.app-shell table tbody tr:hover,
+.app-shell table tbody tr.selected-row {
+  background: var(--accent-soft);
+}
+.app-shell .list-footer {
+  background: var(--surface-raised);
+  border-color: var(--line-strong);
+}
+.app-shell .context-menu,
+.app-shell .view-popover {
+  border-color: var(--line-strong);
+  background: var(--surface-raised);
+  box-shadow: 0 14px 32px #0004;
+}
+.app-shell .view-popover {
+  width: 246px;
+  padding: 14px;
+  border-radius: 9px;
+}
+.app-shell .view-popover > strong {
+  color: var(--text);
+  font-size: var(--font-body, 14px);
+}
+.app-shell .view-popover label {
+  color: var(--text);
+}
+.app-shell .view-popover label small {
+  margin-left: auto;
+  color: var(--muted-strong);
+  font-size: var(--font-small, 12px);
+}
+.app-shell .view-popover .locked-module {
+  color: var(--muted-strong);
+}
+.app-shell .theme-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px solid var(--line-strong);
+  padding-top: 8px;
+}
+.app-shell .theme-options {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.app-shell .theme-options button {
+  padding: 5px 8px;
+  border-radius: 4px;
+  color: var(--muted-strong);
+  font-size: var(--font-small, 12px);
+}
+.app-shell .theme-options button.chosen {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.app-shell[data-theme="light"] .notice,
+.app-shell[data-theme="light"] .error {
+  border-color: #d8b77b;
+  background: #fff7e5;
+  color: #795b22;
+}
+@media (max-width: 1050px) {
+  .app-shell .main {
+    padding: 10px;
+  }
+}
