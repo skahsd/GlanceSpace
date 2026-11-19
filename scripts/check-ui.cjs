@@ -39,6 +39,15 @@ const { chromium } = require('playwright');
   await page.getByRole('button',{name:'开始扫描'}).click();
   await page.waitForFunction(()=>document.querySelectorAll('tbody tr').length===100);
   await page.waitForTimeout(400);
+  await page.getByRole('button',{name:'视图设置'}).click();
+  const matrixToggle=page.locator('.view-popover label').filter({hasText:'空间矩阵'}).locator('input');
+  assert.equal(await matrixToggle.isChecked(),true,'matrix remains enabled');
+  assert.equal(await matrixToggle.isDisabled(),true,'matrix cannot be hidden');
+  await page.getByRole('button',{name:'浅色',exact:true}).click();
+  assert.equal(await page.locator('.app-shell').getAttribute('data-theme'),'light','light theme applies');
+  await page.getByRole('button',{name:'深色',exact:true}).click();
+  assert.equal(await page.locator('.app-shell').getAttribute('data-theme'),'dark','dark theme restores');
+  await page.getByRole('button',{name:'视图设置'}).click();
   async function checkLayout(only){
    return page.evaluate(only=>{
     const overflow=[...document.querySelectorAll('*')].filter(e=>{const s=getComputedStyle(e);return s.display!=='none'&&['auto','scroll'].some(v=>s.overflowY===v||s.overflowX===v)&&(e.scrollHeight>e.clientHeight+1||e.scrollWidth>e.clientWidth+1)}).map(e=>e.className);

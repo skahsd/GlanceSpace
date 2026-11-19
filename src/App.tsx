@@ -7,7 +7,7 @@ import Treemap from './Treemap.tsx';
 import type { Rect } from './treemap.ts';
 import ContextMenu from './ContextMenu.tsx';
 import type { MenuTarget } from './ContextMenu.tsx';
-import { defaultView, fontSizes, moduleKeys, moduleLabels, readView, toggleModule } from './viewSettings.ts';
+import { defaultView, fontSizes, moduleKeys, moduleLabels, readView, themes, toggleModule } from './viewSettings.ts';
 import type { FontSize } from './viewSettings.ts';
 import type { CSSProperties } from 'react';
 
@@ -186,7 +186,7 @@ export default function App() {
   }
   const selectedNode = selected ?? page?.directory;
 
-  return <div className={'app-shell' + (mapOnly ? ' map-only' : '')} style={{ '--font-body': view.font + 'px', '--font-small': (view.font - 2) + 'px' } as CSSProperties}>
+  return <div className={'app-shell' + (mapOnly ? ' map-only' : '')} data-theme={view.theme} style={{ '--font-body': view.font + 'px', '--font-small': (view.font - 2) + 'px' } as CSSProperties}>
     <main className="main">
       <section className="scan-bar" aria-label="扫描控制">
         <strong className="app-name">GlanceSpace</strong>
@@ -204,6 +204,7 @@ export default function App() {
               setView(old => toggleModule(old, key));
             }} />{moduleLabels[key]}{key === 'map' && <small>始终显示</small>}</label>)}
             <label className="font-setting">界面字号<select value={view.font} onChange={e => setView(old => ({ ...old, font: Number(e.target.value) as FontSize }))}>{fontSizes.map((size, index) => <option key={size} value={size}>{['标准', '较大', '大', '特大'][index]}</option>)}</select></label>
+            <div className="theme-setting" role="group" aria-label="主题"><span>主题</span><div className="theme-options">{themes.map(theme => <button key={theme} type="button" aria-pressed={view.theme === theme} className={view.theme === theme ? 'chosen' : ''} onClick={() => setView(old => ({ ...old, theme }))}>{theme === 'dark' ? '深色' : '浅色'}</button>)}</div></div>
             <button className="button subtle" onClick={() => { setView(defaultView); }}>恢复默认</button>
           </div>}
         </div>

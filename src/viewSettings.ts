@@ -3,8 +3,10 @@ export type Module = keyof typeof moduleLabels;
 export const moduleKeys = Object.keys(moduleLabels) as Module[];
 export const fontSizes = [14, 15, 16, 17] as const;
 export type FontSize = typeof fontSizes[number];
-export type ViewSettings = { font: FontSize; modules: Record<Module, boolean> };
-export const defaultView: ViewSettings = { font: 15, modules: { map: true, list: true, details: true } };
+export const themes = ['dark', 'light'] as const;
+export type Theme = typeof themes[number];
+export type ViewSettings = { font: FontSize; theme: Theme; modules: Record<Module, boolean> };
+export const defaultView: ViewSettings = { font: 15, theme: 'dark', modules: { map: true, list: true, details: true } };
 
 export function readView(raw: string | null): ViewSettings {
   try {
@@ -12,7 +14,8 @@ export function readView(raw: string | null): ViewSettings {
     const modules = { ...defaultView.modules };
     for (const key of moduleKeys) if (typeof value?.modules?.[key] === 'boolean') modules[key] = value.modules[key];
     modules.map = true;
-    return { modules, font: fontSizes.find(size => size === value?.font) ?? defaultView.font };
+    const theme = themes.find(item => item === value?.theme) ?? defaultView.theme;
+    return { modules, font: fontSizes.find(size => size === value?.font) ?? defaultView.font, theme };
   } catch { return defaultView; }
 }
 
