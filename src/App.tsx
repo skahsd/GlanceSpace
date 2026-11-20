@@ -58,6 +58,7 @@ export default function App() {
   const phase = useRef('idle');
   phase.current = progress.phase;
   const nodeId = history.ids[history.index];
+  const [listNodeId, setListNodeId] = useState(nodeId);
   const running = !terminal(progress);
   const desktop = isTauri();
 
@@ -74,6 +75,7 @@ export default function App() {
   }, [showViewSettings]);
   useEffect(() => { localStorage.setItem('glancespace.mapMode', mode); }, [mode]);
   useEffect(() => { setExpanded([]); setMenu(null); }, [scanId, nodeId, mode]);
+  useEffect(() => { setListNodeId(nodeId); }, [nodeId]);
   useEffect(() => { setSelected(null); }, [nodeId]);
   useEffect(() => {
     const escape = (e: KeyboardEvent) => {
@@ -102,7 +104,7 @@ export default function App() {
         if (disposed) return;
         setProgress(p);
         if (p.revision === lastRevision) return;
-        const query = { nodeId, offset, limit: 100, metric, pattern: filter.pattern, kind: filter.kind,
+        const query = { nodeId: listNodeId, offset, limit: 100, metric, pattern: filter.pattern, kind: filter.kind,
           minSize: filter.minSize ? Math.floor(Number(filter.minSize) * 1024 ** 2) : null,
           olderThanDays: filter.olderThanDays ? Number(filter.olderThanDays) : null };
         const [nextPage, nextTree] = await Promise.all([
@@ -120,7 +122,7 @@ export default function App() {
     void refresh();
     const timer = setInterval(() => { if (!['completed', 'cancelled', 'failed'].includes(phase.current) || lastRevision < 0) void refresh(); }, 350);
     return () => { disposed = true; clearInterval(timer); };
-  }, [scanId, nodeId, metric, offset, filter, progress.phase, expanded]);
+  }, [scanId, nodeId, listNodeId, metric, offset, filter, progress.phase, expanded]);
 
   async function start() {
     if (!root.trim() || starting || running) return;
@@ -131,7 +133,7 @@ export default function App() {
     try {
       const id = await invoke<number>('start_scan', { root: root.trim(), onProgress: channel });
       localStorage.setItem('glancespace.recentPath', root.trim());
-      setHistory({ ids: [0], index: 0 }); setOffset(0); setSelected(null); setPage(null);
+      setHistory({ ids: [0], index: 0 }); setListNodeId(0); setOffset(0); setSelected(null); setPage(null);
       setTree(null); setExpanded([]); setMenu(null);
       setScanId(id);
     } catch (e) { setError(String(e)); }
@@ -147,7 +149,7 @@ export default function App() {
   }
   function drill(node: FsNode) {
     if (node.id < 0 || !node.isDir || node.state === 'skipped') return;
-    setHistory(h => navigate(h, node.id)); setOffset(0); setSelected(node); setError('');
+    setHistory(h => navigate(h, node.id)); setListNodeId(node.id); setOffset(0); setSelected(node); setError('');
   }
   const mapItems = useMemo(() => tree?.directory.id === nodeId ? branchItems(tree) : [], [tree, nodeId]);
   const branches = useMemo(() => new Map(tree?.branches.map(b => [b.directory.id, branchItems(b)]) ?? []), [tree]);
@@ -155,6 +157,7 @@ export default function App() {
   function mapClick(rect: Rect) {
     const node = rect.node;
     setSelected(node);
+    if (node.state !== 'skipped') setListNodeId(node.isDir ? node.id : (node.parent ?? nodeId));
     if (!node.isDir || node.state === 'skipped') return;
     if (mode === 'navigate' || rect.width < 160 || rect.height < 100) { drill(node); return; }
     if (expanded.includes(node.id)) { setExpanded(ids => collapseExpanded(ids, node.id, allNodes)); return; }
