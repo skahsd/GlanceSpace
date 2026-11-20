@@ -174,10 +174,9 @@
   box-shadow: inset 0 0 0 1px #0002, 0 8px 22px #0002;
 }
 .app-shell .map-legend {
-  padding: 5px 8px;
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  background: var(--surface-raised);
+  padding: 2px 2px 0;
+  border: 0;
+  background: transparent;
 }
 .app-shell .inspector {
   width: clamp(220px, 25%, 290px);
