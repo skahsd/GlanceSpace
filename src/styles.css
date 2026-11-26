@@ -50,7 +50,11 @@
   --surface: #ffffff;
   --surface-raised: #f7fafc;
   --surface-soft: #e9f0f5;
-  --line-strong: #b9c8d5;
+  --line: #d8e1e9;
+  --line-strong: #98adbf;
+  --muted: #52677a;
+  --green: #16785b;
+  --warning: #795319;
   --text: #1b2a38;
   --muted-strong: #5d7182;
   --accent-soft: #d8f2e7;
@@ -215,11 +219,11 @@
 .app-shell .table-wrap {
   background: var(--surface);
 }
-.app-shell table thead {
+.app-shell th {
   background: var(--surface-raised);
   color: var(--muted-strong);
 }
-.app-shell table tbody tr {
+.app-shell td {
   border-color: var(--line-strong);
 }
 .app-shell table tbody tr:hover,
@@ -287,6 +291,40 @@
   border-color: #d8b77b;
   background: #fff7e5;
   color: #795b22;
+}
+.app-shell[data-theme="light"] :is(input:not([type="checkbox"]), select) {
+  border-color: var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
+}
+.app-shell[data-theme="light"] .path-field input {
+  background: transparent;
+}
+.app-shell[data-theme="light"] input::placeholder,
+.app-shell[data-theme="light"] :is(.breadcrumbs i, .map-legend, .map-empty > span, .detail-path, .file-icon) {
+  color: var(--muted);
+}
+.app-shell[data-theme="light"] :is(.list-footer button, .context-menu button:hover, .context-menu button:focus) {
+  background: var(--surface-soft);
+}
+.app-shell[data-theme="light"] .table-wrap {
+  scrollbar-color: var(--line-strong) var(--surface-raised);
+}
+.app-shell[data-theme="light"] :is(.table-state, .state-chip) {
+  color: var(--accent-strong);
+}
+.app-shell[data-theme="light"] .state-chip {
+  background: var(--accent-soft);
+}
+.app-shell[data-theme="light"] :is(.table-state.warning, .state-chip.warning, .detail-message, .folder-icon) {
+  color: var(--warning);
+}
+.app-shell[data-theme="light"] .state-chip.warning {
+  background: #fff2d6;
+}
+.app-shell[data-theme="light"] .map-tooltip {
+  background: var(--surface);
+  border-color: var(--line-strong);
 }
 @media (max-width: 1050px) {
   .app-shell .main {
