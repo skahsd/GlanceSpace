@@ -33,8 +33,8 @@ export function collapseExpanded(expanded: number[], id: number, nodes: FsNode[]
 }
 export interface History { ids: number[]; index: number }
 export const emptyProgress: Progress = { phase: 'idle', files: 0, directories: 0, logicalSize: 0, diskSize: 0, errors: 0, skipped: 0, unknown: 0, revision: 0, elapsedMs: 0, message: null };
-export function formatBytes(value: number | null): string {
-  if (value === null || !Number.isFinite(value) || value < 0) return '未知';
+export function formatBytes(value: number | null, unknown = '未知'): string {
+  if (value === null || !Number.isFinite(value) || value < 0) return unknown;
   if (value === 0) return '0 B';
   const unit = Math.min(Math.floor(Math.log(value) / Math.log(1024)), 5);
   return `${Number((value / 1024 ** unit).toFixed(1))} ${['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'][unit]}`;

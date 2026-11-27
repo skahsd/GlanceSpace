@@ -2,13 +2,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { defaultView, readView, toggleModule } from '../src/viewSettings.ts';
 
-test('standard font and dark theme are the defaults', () => {
+test('standard font, dark theme and Chinese are the defaults', () => {
   assert.equal(defaultView.font, 15);
   assert.equal(defaultView.theme, 'dark');
+  assert.equal(readView('{}').language, 'zh-CN');
+  assert.equal(readView('{"language":"unexpected"}').language, 'zh-CN');
 });
 
-test('saved module choices and valid size restore even after reload', () => {
-  const value = { ...toggleModule(defaultView, 'details'), font: 17, theme: 'light' as const };
+test('saved language, theme, font size and module choices restore together', () => {
+  const value = { ...toggleModule(defaultView, 'details'), font: 17, theme: 'light' as const, language: 'en' as const };
   assert.deepEqual(readView(JSON.stringify(value)), value);
   assert.deepEqual(readView('{'), defaultView);
 });

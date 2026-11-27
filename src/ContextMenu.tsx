@@ -1,9 +1,10 @@
 import { useLayoutEffect, useRef } from 'react';
 import type { FsNode } from './model.ts';
+import type { Translate } from './i18n.ts';
 
 export interface MenuTarget { node: FsNode; scanId: number; x: number; y: number }
-export default function ContextMenu({ target, onClose, onAction }: {
-  target: MenuTarget; onClose: () => void; onAction: (action: 'open_with' | 'show_in_explorer', target: MenuTarget) => void;
+export default function ContextMenu({ target, t, onClose, onAction }: {
+  target: MenuTarget; t: Translate; onClose: () => void; onAction: (action: 'open_with' | 'show_in_explorer', target: MenuTarget) => void;
 }) {
   const menu = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -23,7 +24,7 @@ export default function ContextMenu({ target, onClose, onAction }: {
       if (previous?.isConnected && (element?.contains(document.activeElement) || document.activeElement === document.body)) previous.focus();
     };
   }, [onClose, target]);
-  return <div ref={menu} className="context-menu" role="menu" aria-label={`${target.node.name} 的操作`}
+  return <div ref={menu} className="context-menu" role="menu" aria-label={t('itemActions', { name: target.node.name })}
     style={{ left: target.x, top: target.y }}
     onContextMenu={e => e.preventDefault()} onKeyDown={e => {
       e.stopPropagation();
@@ -36,7 +37,7 @@ export default function ContextMenu({ target, onClose, onAction }: {
         buttons[next]?.focus();
       }
     }}>
-    {!target.node.isDir && <button role="menuitem" onClick={() => onAction('open_with', target)}>打开方式…</button>}
-    <button role="menuitem" onClick={() => onAction('show_in_explorer', target)}>{target.node.isDir ? '在资源管理器中打开' : '在资源管理器中显示'}</button>
+    {!target.node.isDir && <button role="menuitem" onClick={() => onAction('open_with', target)}>{t('openWith')}</button>}
+    <button role="menuitem" onClick={() => onAction('show_in_explorer', target)}>{t(target.node.isDir ? 'explorerOpen' : 'explorerShow')}</button>
   </div>;
 }

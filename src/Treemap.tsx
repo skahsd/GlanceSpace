@@ -3,6 +3,7 @@ import { formatBytes, metricValue } from './model.ts';
 import type { FsNode, Metric } from './model.ts';
 import { hitTest, interpolateRects, layout } from './treemap.ts';
 import type { Rect } from './treemap.ts';
+import type { Translate } from './i18n.ts';
 
 const colors = ['#367fa4', '#398b79', '#7762aa', '#a47a47', '#5578b4', '#9a5e79', '#4a9396'];
 function color(node: FsNode): string {
@@ -13,8 +14,8 @@ function color(node: FsNode): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
-export default function Treemap({ items, branches, metric, fontSize, selected, onActivate, onSelect, onContext, onCollapse }: {
-  items: FsNode[]; branches: Map<number, FsNode[]>; metric: Metric; fontSize: number; selected: number | undefined;
+export default function Treemap({ items, branches, t, metric, fontSize, selected, onActivate, onSelect, onContext, onCollapse }: {
+  items: FsNode[]; branches: Map<number, FsNode[]>; t: Translate; metric: Metric; fontSize: number; selected: number | undefined;
   onActivate: (rect: Rect) => void; onSelect: (node: FsNode) => void;
   onContext: (node: FsNode, x: number, y: number) => void; onCollapse: (ids: number[]) => void;
 }) {
@@ -84,10 +85,10 @@ export default function Treemap({ items, branches, metric, fontSize, selected, o
         if (width > fontSize * 5 && height >= fontSize + (rect.expanded ? 6 : 14)) {
           ctx.beginPath(); ctx.rect(x + 6, y + 4, Math.max(0, width - 12), rect.expanded ? 20 : height - 8); ctx.clip();
           ctx.fillStyle = '#fff'; ctx.font = '500 ' + fontSize + 'px "Segoe UI", "Microsoft YaHei", sans-serif';
-          ctx.fillText(`${rect.expanded ? '⊟ ' : node.isDir ? '▣ ' : ''}${node.name}`, x + 8, y + (rect.expanded ? 5 : 9));
+          ctx.fillText(`${rect.expanded ? '⊟ ' : node.isDir ? '▣ ' : ''}${node.id < 0 ? t('otherItems') : node.name}`, x + 8, y + (rect.expanded ? 5 : 9));
           if (height > 50 && !rect.expanded) {
             ctx.fillStyle = '#ffffffb8'; ctx.font = Math.max(12, fontSize - 1) + 'px "Segoe UI", sans-serif';
-            ctx.fillText(`${node.unknown ? '≥ ' : ''}${formatBytes(metricValue(node, metric))}`, x + 8, y + 30);
+            ctx.fillText(`${node.unknown ? '≥ ' : ''}${formatBytes(metricValue(node, metric), t('unknown'))}`, x + 8, y + 30);
           }
         }
         ctx.restore();
@@ -104,7 +105,7 @@ export default function Treemap({ items, branches, metric, fontSize, selected, o
     }
     frame = requestAnimationFrame(animate);
     return () => { cancelAnimationFrame(frame); drawRef.current = () => {}; };
-  }, [items, branches, size, ratio, metric, fontSize, reduced]);
+  }, [items, branches, size, ratio, metric, fontSize, reduced, t]);
   useEffect(() => { drawRef.current(); }, [selected]);
   const target = (event: React.MouseEvent<HTMLCanvasElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -112,7 +113,7 @@ export default function Treemap({ items, branches, metric, fontSize, selected, o
   };
   return <div className="map-canvas" ref={container}>
     <canvas ref={canvas} style={{ width: size.width, height: size.height }} tabIndex={0} role="img"
-      aria-label="磁盘空间矩阵。单击目录执行所选模式，右键打开菜单。方向键选择项目，Enter 操作，Shift+F10 打开菜单。"
+      aria-label={t('mapA11y')}
       onMouseMove={event => {
         const found = target(event);
         const bounds = event.currentTarget.getBoundingClientRect();
@@ -136,9 +137,9 @@ export default function Treemap({ items, branches, metric, fontSize, selected, o
           onSelect(next.node); setHover({ node: next.node, x: next.x, y: next.y });
         }
       }} />
-    {!items.some(n => metricValue(n, metric) > 0) && <div className="map-empty"><span>▦</span><strong>空间分布将在这里展开</strong><p>选择目录并开始扫描；零字节和未知大小条目可在列表中查看。</p></div>}
+    {!items.some(n => metricValue(n, metric) > 0) && <div className="map-empty"><span>▦</span><strong>{t('mapEmpty')}</strong><p>{t('mapHint')}</p></div>}
     {hover && <div className="map-tooltip" style={{ left: Math.max(4, Math.min(hover.x + 14, size.width - 290)), top: Math.max(4, Math.min(hover.y + 14, size.height - 100)) }}>
-      <strong>{hover.node.name}</strong><span>{hover.node.unknown ? '已知部分 ≥ ' : ''}{formatBytes(metricValue(hover.node, metric))}</span><small>{hover.node.path}</small>
+      <strong>{hover.node.id < 0 ? t('otherItems') : hover.node.name}</strong><span>{hover.node.unknown ? `${t('knownPart')} ≥ ` : ''}{formatBytes(metricValue(hover.node, metric), t('unknown'))}</span><small>{hover.node.path}</small>
     </div>}
   </div>;
 }

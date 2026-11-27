@@ -7,15 +7,19 @@ import Treemap from './Treemap.tsx';
 import type { Rect } from './treemap.ts';
 import ContextMenu from './ContextMenu.tsx';
 import type { MenuTarget } from './ContextMenu.tsx';
-import { defaultView, fontSizes, moduleKeys, moduleLabels, readView, themes, toggleModule } from './viewSettings.ts';
+import { defaultView, fontSizes, moduleKeys, readView, themes, toggleModule } from './viewSettings.ts';
 import type { FontSize } from './viewSettings.ts';
 import type { CSSProperties } from 'react';
+import { languageLabels, localizeDiagnostic, translator } from './i18n.ts';
+import type { Language, MessageKey } from './i18n.ts';
 
-const phases: Record<string, string> = { idle: '等待扫描', ready: '准备中', scanning: '正在扫描', paused: '已暂停', cancelling: '正在取消', cancelled: '已取消 · 结果不完整', completed: '扫描结束', failed: '扫描失败' };
+const phaseLabels: Partial<Record<string, MessageKey>> = {
+  idle: 'idle', ready: 'ready', scanning: 'scanning', paused: 'paused', cancelling: 'cancelling',
+  cancelled: 'cancelled', completed: 'completed', failed: 'failed',
+};
+const fontLabels = ['compact', 'standard', 'large', 'extraLarge'] as const;
 const terminal = (p: Progress) => ['idle', 'completed', 'cancelled', 'failed'].includes(p.phase);
-const date = (value: number | null) => value === null ? '未知' : new Date(value * 1000).toLocaleDateString('zh-CN');
-const nodeState = (node: FsNode) => node.state === 'skipped' ? '已跳过' : node.state === 'partial' ? '部分未知' : !node.complete ? '未完成' : '已统计';
-const sizeLabel = (node: FsNode, metric: Metric) => `${metric === 'disk' && node.unknown ? '≥ ' : ''}${formatBytes(metricValue(node, metric))}`;
+const nodeState = (node: FsNode): MessageKey => node.state === 'skipped' ? 'skipped' : node.state === 'partial' ? 'partial' : !node.complete ? 'incomplete' : 'counted';
 
 function Icon({ name, size = 18 }: { name: 'map' | 'folder' | 'drive' | 'arrow' | 'shield' | 'view' | 'scan'; size?: number }) {
   const paths = {
@@ -49,7 +53,11 @@ export default function App() {
   const [showViewSettings, setShowViewSettings] = useState(false);
   const viewSettings = useRef<HTMLDivElement>(null);
   const viewButton = useRef<HTMLButtonElement>(null);
-  const { modules } = view;
+  const { modules, language } = view;
+  const t = useMemo(() => translator(language), [language]);
+  const sizeLabel = (node: FsNode, metric: Metric) =>
+    `${metric === 'disk' && node.unknown ? '≥ ' : ''}${formatBytes(metricValue(node, metric), t('unknown'))}`;
+  const date = (value: number | null) => value === null ? t('unknown') : new Date(value * 1000).toLocaleDateString(language);
   const [pattern, setPattern] = useState('');
   const [filter, setFilter] = useState({ pattern: '', kind: 'all', minSize: '', olderThanDays: '' });
   const [offset, setOffset] = useState(0);
@@ -68,6 +76,7 @@ export default function App() {
   }, [desktop]);
   useEffect(() => { localStorage.setItem('glancespace.metric', metric); }, [metric]);
   useEffect(() => { localStorage.setItem('glancespace.view', JSON.stringify(view)); }, [view]);
+  useEffect(() => { document.documentElement.lang = language; }, [language]);
   useEffect(() => {
     if (!showViewSettings) return;
     const close = (e: PointerEvent) => { if (!viewSettings.current?.contains(e.target as Node)) setShowViewSettings(false); };
@@ -145,7 +154,7 @@ export default function App() {
     catch (e) { setError(String(e)); }
   }
   async function browse() {
-    try { const result = await open({ directory: true, multiple: false, title: '选择本机固定磁盘上的目录' }); if (typeof result === 'string') setRoot(result); }
+    try { const result = await open({ directory: true, multiple: false, title: t('folderDialog') }); if (typeof result === 'string') setRoot(result); }
     catch (e) { setError(String(e)); }
   }
   function drill(node: FsNode) {
@@ -189,68 +198,77 @@ export default function App() {
     finally { setOpening(false); }
   }
   const selectedNode = selected ?? page?.directory;
+  const diagnostic = localizeDiagnostic(error || progress.message || '', language);
+  const detailMessage = localizeDiagnostic(selectedNode?.message ?? '', language);
+  const phaseLabel = phaseLabels[progress.phase];
+  const metricLabel = t(metric);
 
-  return <div className={'app-shell' + (mapOnly ? ' map-only' : '')} data-theme={view.theme} style={{ '--font-body': view.font + 'px', '--font-small': (view.font - 2) + 'px' } as CSSProperties}>
+  return <div className={'app-shell' + (mapOnly ? ' map-only' : '')} data-theme={view.theme} lang={language} style={{ '--font-body': view.font + 'px', '--font-small': (view.font - 2) + 'px' } as CSSProperties}>
     <main className="main">
-      <section className="scan-bar" aria-label="扫描控制">
+      <section className="scan-bar" aria-label={t('scanControls')}>
         <strong className="app-name">GlanceSpace</strong>
-        <select aria-label="固定磁盘" value="" disabled={running || starting} onChange={e => setRoot(e.target.value)}><option value="">磁盘</option>{drives.map(d => <option key={d} value={d}>{d}</option>)}</select>
-        <label className="path-field"><Icon name="folder" /><input aria-label="扫描目录" value={root} disabled={running || starting} onChange={e => setRoot(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && desktop) void start(); }} placeholder="例如 D:\\Projects" /></label>
-        <button className="button subtle" onClick={() => void browse()} disabled={!desktop || running || starting}>选择目录</button>
-        <button className="button primary scan-action" onClick={() => void start()} disabled={!desktop || running || starting}>{starting ? '正在启动…' : scanId ? '重新扫描' : '开始扫描'} <Icon name="scan" size={16} /></button>
-        {running && <><button className="button subtle" disabled={progress.phase === 'cancelling'} onClick={() => void control(progress.phase === 'paused' ? 'resume' : 'pause')}>{progress.phase === 'paused' ? '继续' : '暂停'}</button><button className="button danger" disabled={progress.phase === 'cancelling'} onClick={() => void control('cancel')}>取消</button></>}
-        <span className="scan-status" role="status">{phases[progress.phase] ?? progress.phase}</span>
+        <select aria-label={t('fixedDrives')} value="" disabled={running || starting} onChange={e => setRoot(e.target.value)}><option value="">{t('drive')}</option>{drives.map(d => <option key={d} value={d}>{d}</option>)}</select>
+        <label className="path-field"><Icon name="folder" /><input aria-label={t('scanFolder')} value={root} disabled={running || starting} onChange={e => setRoot(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && desktop) void start(); }} placeholder={t('pathExample')} /></label>
+        <button className="button subtle" onClick={() => void browse()} disabled={!desktop || running || starting}>{t('browse')}</button>
+        <button className="button primary scan-action" onClick={() => void start()} disabled={!desktop || running || starting}>{starting ? t('starting') : scanId ? t('rescan') : t('start')} <Icon name="scan" size={16} /></button>
+        {running && <><button className="button subtle" disabled={progress.phase === 'cancelling'} onClick={() => void control(progress.phase === 'paused' ? 'resume' : 'pause')}>{progress.phase === 'paused' ? t('resume') : t('pause')}</button><button className="button danger" disabled={progress.phase === 'cancelling'} onClick={() => void control('cancel')}>{t('cancel')}</button></>}
+        <span className="scan-status" role="status">{phaseLabel ? t(phaseLabel) : progress.phase}</span>
         <div className="view-settings normal-only" ref={viewSettings}>
-          <button className="icon-button" ref={viewButton} aria-label="视图设置" title="视图设置" aria-expanded={showViewSettings} onClick={() => setShowViewSettings(open => !open)}><Icon name="view" /></button>
-          {showViewSettings && <div className="view-popover" aria-label="视图设置">
-            <strong>显示模块</strong>
+          <button className="icon-button" ref={viewButton} aria-label={t('viewSettings')} title={t('viewSettings')} aria-expanded={showViewSettings} onClick={() => setShowViewSettings(open => !open)}><Icon name="view" /></button>
+          {showViewSettings && <div className="view-popover" aria-label={t('viewSettings')}>
+            <strong>{t('modules')}</strong>
             {moduleKeys.map(key => <label key={key} className={key === 'map' ? 'locked-module' : ''}><input type="checkbox" checked={modules[key]} disabled={key === 'map' || key === 'list' && !modules.map} onChange={() => {
               setView(old => toggleModule(old, key));
-            }} />{moduleLabels[key]}{key === 'map' && <small>始终显示</small>}</label>)}
-            <label className="font-setting">界面字号<select value={view.font} onChange={e => setView(old => ({ ...old, font: Number(e.target.value) as FontSize }))}>{fontSizes.map((size, index) => <option key={size} value={size}>{['标准', '较大', '大', '特大'][index]}</option>)}</select></label>
-            <div className="theme-setting" role="group" aria-label="主题"><span>主题</span><div className="theme-options">{themes.map(theme => <button key={theme} type="button" aria-pressed={view.theme === theme} className={view.theme === theme ? 'chosen' : ''} onClick={() => setView(old => ({ ...old, theme }))}>{theme === 'dark' ? '深色' : '浅色'}</button>)}</div></div>
-            <button className="button subtle" onClick={() => { setView(defaultView); }}>恢复默认</button>
+            }} />{t(key)}{key === 'map' && <small>{t('alwaysOn')}</small>}</label>)}
+            <label className="font-setting">{t('font')}<select value={view.font} onChange={e => setView(old => ({ ...old, font: Number(e.target.value) as FontSize }))}>{fontSizes.map((size, index) => <option key={size} value={size}>{t(fontLabels[index])}</option>)}</select></label>
+            <div className="theme-setting" role="group" aria-label={t('theme')}><span>{t('theme')}</span><div className="theme-options">{themes.map(theme => <button key={theme} type="button" aria-pressed={view.theme === theme} className={view.theme === theme ? 'chosen' : ''} onClick={() => setView(old => ({ ...old, theme }))}>{t(theme)}</button>)}</div></div>
+            <label className="font-setting">{t('language')}
+              <select value={language} onChange={e => setView(old => ({ ...old, language: e.target.value as Language }))}>
+                {Object.entries(languageLabels).map(([code, label]) => <option key={code} value={code} lang={code}>{label}</option>)}
+              </select>
+            </label>
+            <button className="button subtle" onClick={() => setView({ ...defaultView, language })}>{t('reset')}</button>
           </div>}
         </div>
       </section>
-      {!desktop && <div className="notice normal-only">界面预览 · 运行 <code>npm run desktop</code> 扫描本机磁盘</div>}
+      {!desktop && <div className="notice normal-only">{t('preview', { command: 'npm run desktop' })}</div>}
       <section className="explorer">
         <div className="explorer-toolbar"><div className="navigation">
-          <button aria-label="后退" disabled={history.index === 0} onClick={() => { setHistory(h => ({ ...h, index: h.index - 1 })); setOffset(0); }}><Icon name="arrow" size={16} /></button>
-          <button aria-label="前进" disabled={history.index === history.ids.length - 1} onClick={() => { setHistory(h => ({ ...h, index: h.index + 1 })); setOffset(0); }}><span className="forward"><Icon name="arrow" size={16} /></span></button>
-          <button aria-label="回到扫描根目录" disabled={!page || nodeId === 0} onClick={() => page && drill(page.breadcrumbs[0])}>⌂</button>
-        </div><nav className="breadcrumbs" aria-label="当前目录">{page ? page.breadcrumbs.map((n, i) => <span key={n.id}>{i > 0 && <i>/</i>}<button title={n.path} onClick={() => drill(n)}>{i === 0 ? n.path : n.name}</button></span>) : <span>选择一个目录，开始探索</span>}</nav>
-        <div className="segmented" role="group" aria-label="大小口径"><button aria-pressed={metric === 'disk'} className={metric === 'disk' ? 'chosen' : ''} onClick={() => setMetric('disk')}>磁盘占用</button><button aria-pressed={metric === 'logical'} className={metric === 'logical' ? 'chosen' : ''} onClick={() => setMetric('logical')}>逻辑大小</button></div>
-        <div className="segmented" role="group" aria-label="矩阵操作模式"><button aria-pressed={mode === 'expand'} className={mode === 'expand' ? 'chosen' : ''} onClick={() => setMode('expand')}>展开模式</button><button aria-pressed={mode === 'navigate'} className={mode === 'navigate' ? 'chosen' : ''} onClick={() => setMode('navigate')}>切换模式</button></div>
-        <button className="button subtle" aria-pressed={mapOnly} onClick={() => { setMapOnly(v => !v); closeMenu(); }}>{mapOnly ? '退出仅矩阵' : '仅矩阵'}</button></div>
-        {(error || progress.message || opening) && <div className="error" role={opening ? 'status' : 'alert'}><span title={error || progress.message || ''}>{opening ? '正在调用系统文件操作…' : error || progress.message}</span>{error && <button aria-label="关闭提示" onClick={() => setError('')}>×</button>}</div>}
-        <div className="visual-row"><div className="map-panel"><div className="panel-caption"><strong>空间矩阵</strong><div className="map-totals" aria-label="本次扫描大小" title={progress.unknown ? `本次扫描有 ${progress.unknown} 项磁盘占用未知` : '本次扫描合计'}><span>磁盘占用 <b>{scanId === null ? '—' : (progress.unknown ? '≥ ' : '') + formatBytes(progress.diskSize)}</b></span><span>逻辑大小 <b>{scanId === null ? '—' : formatBytes(progress.logicalSize)}</b></span></div></div><Treemap key={`${scanId}:${nodeId}`} items={mapItems} branches={branches} metric={metric} fontSize={view.font} selected={selectedNode?.id} onActivate={mapClick} onSelect={setSelected} onContext={context} onCollapse={ids => setExpanded(old => ids.reduce((next, id) => collapseExpanded(next, id, allNodes), old))} /><div className="map-legend"><span>面积：{metric === 'disk' ? '磁盘占用' : '逻辑大小'} · 条纹：部分未知</span>{(tree?.truncated || tree?.branches.some(b => b.truncated)) && <span>其他项目已合并</span>}</div></div>
-          <aside className="inspector normal-only" hidden={!modules.details} aria-label="所选项目详情"><h2 title={selectedNode?.name}>{selectedNode?.name || '项目详情'}</h2>{selectedNode ? <>
-            <button className="detail-path" title={`${selectedNode.path}（点击复制）`} onClick={() => void navigator.clipboard.writeText(selectedNode.path).catch(e => setError(String(e)))}>{selectedNode.path}</button><div className={`state-chip ${selectedNode.complete ? '' : 'warning'}`}>{nodeState(selectedNode)}</div>
-            <dl><dt>磁盘占用</dt><dd>{sizeLabel(selectedNode, 'disk')}</dd><dt>逻辑大小</dt><dd>{sizeLabel(selectedNode, 'logical')}</dd><dt>修改日期</dt><dd>{date(selectedNode.modified)}</dd></dl>
-            {selectedNode.message && <p className="detail-message" title={selectedNode.message}>{selectedNode.message}</p>}
-            {selectedNode.isDir && selectedNode.state !== 'skipped' && selectedNode.id !== nodeId && <button className="button subtle full" onClick={() => drill(selectedNode)}>进入此目录 →</button>}
-          </> : <p className="detail-placeholder">选择项目查看详情；右键可使用系统打开方式。</p>}</aside>
+          <button aria-label={t('back')} disabled={history.index === 0} onClick={() => { setHistory(h => ({ ...h, index: h.index - 1 })); setOffset(0); }}><Icon name="arrow" size={16} /></button>
+          <button aria-label={t('forward')} disabled={history.index === history.ids.length - 1} onClick={() => { setHistory(h => ({ ...h, index: h.index + 1 })); setOffset(0); }}><span className="forward"><Icon name="arrow" size={16} /></span></button>
+          <button aria-label={t('scanRoot')} disabled={!page || nodeId === 0} onClick={() => page && drill(page.breadcrumbs[0])}>⌂</button>
+        </div><nav className="breadcrumbs" aria-label={t('currentFolder')}>{page ? page.breadcrumbs.map((n, i) => <span key={n.id}>{i > 0 && <i>/</i>}<button title={n.path} onClick={() => drill(n)}>{i === 0 ? n.path : n.name}</button></span>) : <span>{t('chooseFolder')}</span>}</nav>
+        <div className="segmented" role="group" aria-label={t('sizeMetric')}><button aria-pressed={metric === 'disk'} className={metric === 'disk' ? 'chosen' : ''} onClick={() => setMetric('disk')}>{t('disk')}</button><button aria-pressed={metric === 'logical'} className={metric === 'logical' ? 'chosen' : ''} onClick={() => setMetric('logical')}>{t('logical')}</button></div>
+        <div className="segmented" role="group" aria-label={t('mapMode')}><button aria-pressed={mode === 'expand'} className={mode === 'expand' ? 'chosen' : ''} onClick={() => setMode('expand')}>{t('expand')}</button><button aria-pressed={mode === 'navigate'} className={mode === 'navigate' ? 'chosen' : ''} onClick={() => setMode('navigate')}>{t('navigate')}</button></div>
+        <button className="button subtle" aria-pressed={mapOnly} onClick={() => { setMapOnly(v => !v); closeMenu(); }}>{mapOnly ? t('exitMapOnly') : t('mapOnly')}</button></div>
+        {(error || progress.message || opening) && <div className="error" role={opening ? 'status' : 'alert'}><span title={diagnostic}>{opening ? t('opening') : diagnostic}</span>{error && <button aria-label={t('dismiss')} onClick={() => setError('')}>×</button>}</div>}
+        <div className="visual-row"><div className="map-panel"><div className="panel-caption"><strong>{t('map')}</strong><div className="map-totals" aria-label={t('scanSizes')} title={progress.unknown ? t('unknownDisk', { count: progress.unknown.toLocaleString(language) }) : t('scanTotal')}><span>{t('disk')} <b>{scanId === null ? '—' : (progress.unknown ? '≥ ' : '') + formatBytes(progress.diskSize)}</b></span><span>{t('logical')} <b>{scanId === null ? '—' : formatBytes(progress.logicalSize)}</b></span></div></div><Treemap key={`${scanId}:${nodeId}`} items={mapItems} branches={branches} t={t} metric={metric} fontSize={view.font} selected={selectedNode?.id} onActivate={mapClick} onSelect={setSelected} onContext={context} onCollapse={ids => setExpanded(old => ids.reduce((next, id) => collapseExpanded(next, id, allNodes), old))} /><div className="map-legend"><span>{t('legend', { metric: metricLabel })}</span>{(tree?.truncated || tree?.branches.some(b => b.truncated)) && <span>{t('merged')}</span>}</div></div>
+          <aside className="inspector normal-only" hidden={!modules.details} aria-label={t('selectedDetails')}><h2 title={selectedNode?.name}>{selectedNode?.name || t('itemDetails')}</h2>{selectedNode ? <>
+            <button className="detail-path" title={t('copyPath', { path: selectedNode.path })} onClick={() => void navigator.clipboard.writeText(selectedNode.path).catch(e => setError(String(e)))}>{selectedNode.path}</button><div className={`state-chip ${selectedNode.complete ? '' : 'warning'}`}>{t(nodeState(selectedNode))}</div>
+            <dl><dt>{t('disk')}</dt><dd>{sizeLabel(selectedNode, 'disk')}</dd><dt>{t('logical')}</dt><dd>{sizeLabel(selectedNode, 'logical')}</dd><dt>{t('modified')}</dt><dd>{date(selectedNode.modified)}</dd></dl>
+            {selectedNode.message && <p className="detail-message" title={detailMessage}>{detailMessage}</p>}
+            {selectedNode.isDir && selectedNode.state !== 'skipped' && selectedNode.id !== nodeId && <button className="button subtle full" onClick={() => drill(selectedNode)}>{t('enterFolder')}</button>}
+          </> : <p className="detail-placeholder">{t('detailHint')}</p>}</aside>
         </div>
       </section>
-      <section className="list-panel normal-only" aria-label="目录列表" hidden={!modules.list}>
-        <div className="list-toolbar"><strong>目录内容 <small>{page?.total.toLocaleString() ?? '0'} 项</small></strong><div className="filters">
-          <input aria-label="文件名过滤" maxLength={256} value={pattern} onChange={e => setPattern(e.target.value)} placeholder="筛选名称或 *.zip" />
-          <select aria-label="项目类型" value={filter.kind} onChange={e => { setFilter(f => ({ ...f, kind: e.target.value })); setOffset(0); }}><option value="all">全部类型</option><option value="directory">目录</option><option value="file">文件</option></select>
-          <input aria-label="最小大小 MiB" className="number-filter" type="number" min="0" max="1000000000" value={filter.minSize} onChange={e => { setFilter(f => ({ ...f, minSize: e.target.value })); setOffset(0); }} placeholder="≥ MiB" />
-          <input aria-label="至少未修改天数" className="number-filter" type="number" min="0" max="100000" step="1" value={filter.olderThanDays} onChange={e => { setFilter(f => ({ ...f, olderThanDays: e.target.value })); setOffset(0); }} placeholder="≥ 天未修改" />
+      <section className="list-panel normal-only" aria-label={t('folderList')} hidden={!modules.list}>
+        <div className="list-toolbar"><strong>{t('list')} <small>{t('itemCount', { count: (page?.total ?? 0).toLocaleString(language) })}</small></strong><div className="filters">
+          <input aria-label={t('filterName')} maxLength={256} value={pattern} onChange={e => setPattern(e.target.value)} placeholder={t('filterPlaceholder')} />
+          <select aria-label={t('itemType')} value={filter.kind} onChange={e => { setFilter(f => ({ ...f, kind: e.target.value })); setOffset(0); }}><option value="all">{t('allTypes')}</option><option value="directory">{t('folders')}</option><option value="file">{t('files')}</option></select>
+          <input aria-label={t('minSize')} className="number-filter" type="number" min="0" max="1000000000" value={filter.minSize} onChange={e => { setFilter(f => ({ ...f, minSize: e.target.value })); setOffset(0); }} placeholder="≥ MiB" />
+          <input aria-label={t('minAge')} className="number-filter" type="number" min="0" max="100000" step="1" value={filter.olderThanDays} onChange={e => { setFilter(f => ({ ...f, olderThanDays: e.target.value })); setOffset(0); }} placeholder={t('minAgePlaceholder')} />
         </div></div>
-        <div className="table-wrap"><table><thead><tr><th>名称</th><th>磁盘占用{metric === 'disk' && ' ↓'}</th><th>逻辑大小{metric === 'logical' && ' ↓'}</th><th>修改日期</th><th>状态</th></tr></thead><tbody>
+        <div className="table-wrap"><table><thead><tr><th>{t('name')}</th><th>{t('disk')}{metric === 'disk' && ' ↓'}</th><th>{t('logical')}{metric === 'logical' && ' ↓'}</th><th>{t('modified')}</th><th>{t('status')}</th></tr></thead><tbody>
           {page?.items.map(node => <tr key={node.id} className={selectedNode?.id === node.id ? 'selected-row' : ''} onClick={() => setSelected(node)} onDoubleClick={() => drill(node)} onContextMenu={e => { e.preventDefault(); context(node, e.clientX, e.clientY); }} onKeyDown={e => {
             if (e.key === 'ContextMenu' || e.key === 'F10' && e.shiftKey) { e.preventDefault(); const bounds = e.currentTarget.getBoundingClientRect(); context(node, bounds.left + 30, bounds.top + 24); }
           }}>
-            <td><button className="file-name" title={node.path} onClick={() => setSelected(node)} onKeyDown={e => { if (e.key === 'Enter') drill(node); }}><span className={node.isDir ? 'folder-icon' : 'file-icon'}>{node.isDir ? '▣' : '▪'}</span><span>{node.name}</span></button></td><td>{sizeLabel(node, 'disk')}</td><td>{sizeLabel(node, 'logical')}</td><td>{date(node.modified)}</td><td><span className={`table-state ${node.complete ? '' : 'warning'}`}>{nodeState(node)}</span></td>
+            <td><button className="file-name" title={node.path} onClick={() => setSelected(node)} onKeyDown={e => { if (e.key === 'Enter') drill(node); }}><span className={node.isDir ? 'folder-icon' : 'file-icon'}>{node.isDir ? '▣' : '▪'}</span><span>{node.name}</span></button></td><td>{sizeLabel(node, 'disk')}</td><td>{sizeLabel(node, 'logical')}</td><td>{date(node.modified)}</td><td><span className={`table-state ${node.complete ? '' : 'warning'}`}>{t(nodeState(node))}</span></td>
           </tr>)}
-          {!page?.items.length && <tr><td colSpan={5} className="table-empty">{scanId === null ? '扫描后在这里浏览文件和目录' : running ? '正在发现项目，或当前筛选没有匹配项' : '当前目录没有匹配项目'}</td></tr>}
+          {!page?.items.length && <tr><td colSpan={5} className="table-empty">{scanId === null ? t('listEmpty') : running ? t('listScanning') : t('noMatches')}</td></tr>}
         </tbody></table></div>
-        <div className="list-footer"><span>列表筛选作用于当前目录 · 未知占用不参与大小筛选</span><div><button disabled={!page || offset === 0} onClick={() => setOffset(Math.max(0, offset - 100))}>上一页</button><span>{page?.total ? `${offset + 1}–${Math.min(offset + 100, page.total)} / ${page.total}` : '0 / 0'}</span><button disabled={!page || offset + 100 >= page.total} onClick={() => setOffset(offset + 100)}>下一页</button></div></div>
+        <div className="list-footer"><span>{t('filterNote')}</span><div><button disabled={!page || offset === 0} onClick={() => setOffset(Math.max(0, offset - 100))}>{t('previous')}</button><span>{page?.total ? `${offset + 1}–${Math.min(offset + 100, page.total)} / ${page.total}` : '0 / 0'}</span><button disabled={!page || offset + 100 >= page.total} onClick={() => setOffset(offset + 100)}>{t('next')}</button></div></div>
       </section>
     </main>
-    {menu && <ContextMenu key={`${menu.scanId}:${menu.node.id}:${menu.x}:${menu.y}`} target={menu} onClose={closeMenu} onAction={(action, target) => void external(action, target)} />}
+    {menu && <ContextMenu key={`${menu.scanId}:${menu.node.id}:${menu.x}:${menu.y}`} target={menu} t={t} onClose={closeMenu} onAction={(action, target) => void external(action, target)} />}
   </div>;
 }

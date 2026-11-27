@@ -1,12 +1,14 @@
-export const moduleLabels = { map: '空间矩阵', list: '目录内容', details: '详情' };
-export type Module = keyof typeof moduleLabels;
-export const moduleKeys = Object.keys(moduleLabels) as Module[];
+import { defaultLanguage } from './i18n.ts';
+import type { Language } from './i18n.ts';
+
+export const moduleKeys = ['map', 'list', 'details'] as const;
+export type Module = typeof moduleKeys[number];
 export const fontSizes = [14, 15, 16, 17] as const;
 export type FontSize = typeof fontSizes[number];
 export const themes = ['dark', 'light'] as const;
 export type Theme = typeof themes[number];
-export type ViewSettings = { font: FontSize; theme: Theme; modules: Record<Module, boolean> };
-export const defaultView: ViewSettings = { font: 15, theme: 'dark', modules: { map: true, list: true, details: true } };
+export type ViewSettings = { font: FontSize; theme: Theme; language: Language; modules: Record<Module, boolean> };
+export const defaultView: ViewSettings = { font: 15, theme: 'dark', language: defaultLanguage, modules: { map: true, list: true, details: true } };
 
 export function readView(raw: string | null): ViewSettings {
   try {
@@ -15,7 +17,8 @@ export function readView(raw: string | null): ViewSettings {
     for (const key of moduleKeys) if (typeof value?.modules?.[key] === 'boolean') modules[key] = value.modules[key];
     modules.map = true;
     const theme = themes.find(item => item === value?.theme) ?? defaultView.theme;
-    return { modules, font: fontSizes.find(size => size === value?.font) ?? defaultView.font, theme };
+    const language = value?.language === 'en' ? 'en' : defaultLanguage;
+    return { modules, font: fontSizes.find(size => size === value?.font) ?? defaultView.font, theme, language };
   } catch { return defaultView; }
 }
 
