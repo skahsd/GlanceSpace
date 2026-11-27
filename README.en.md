@@ -1,42 +1,69 @@
+<div align="center">
+
+<img src="src-tauri/icons/icon.png" alt="GlanceSpace icon" width="96" height="96">
+
 # GlanceSpace
+
+**Explore Windows disk usage with an interactive treemap**
+
+Scan a local drive or folder to find the files and folders taking up the most space. Browse results as they appear. Scans read file system metadata only.
+
+[Download](#download) · [Screenshots](#screenshots) · [Usage](#usage) · [Architecture](#architecture) · [Development](#development) · [Acknowledgments](#acknowledgments)
 
 [简体中文](README.md) · **English**
 
-GlanceSpace is a disk space analyzer for Windows. Its interactive treemap shows how much space files and folders use, so you can quickly find the largest items.
+</div>
 
-[Download the Windows x64 installer](https://github.com/skahsd/GlanceSpace/releases/download/v0.1.0/GlanceSpace_0.1.0_x64-setup.exe) · [View all releases](https://github.com/skahsd/GlanceSpace/releases)
+---
+
+## Download
+
+| Platform | Installer |
+| --- | --- |
+| Windows 10 version 22H2 or Windows 11 (x64) | [GlanceSpace 0.1.0 · EXE installer](https://github.com/skahsd/GlanceSpace/releases/download/v0.1.0/GlanceSpace_0.1.0_x64-setup.exe) |
+
+[View all releases](https://github.com/skahsd/GlanceSpace/releases)
 
 ## Screenshots
 
-![The standard GlanceSpace view with the treemap, selected folder details, and folder contents](docs/screenshots/overview.png)
+<p align="center">
+  <img src="docs/screenshots/overview.png" alt="Standard view showing the disk usage treemap, selected folder details, and folder list" width="100%">
+  <br>
+  <sub>Standard view · Click a folder in the treemap to see its contents in the list below.</sub>
+</p>
 
-**Standard view.** Select a folder in the treemap to see its contents in the list below.
-
-![GlanceSpace in Treemap only mode with the MySQL and Microsoft VS Code folders expanded](docs/screenshots/treemap-only.png)
-
-**Treemap only mode.** Hide the folder list and details to give the treemap more room while keeping the scan controls. Press `Esc` to return to the standard view.
+<p align="center">
+  <img src="docs/screenshots/treemap-only.png" alt="Treemap only mode showing expanded folders and their files" width="100%">
+  <br>
+  <sub>Treemap only mode · Hide the list and details while keeping the scan controls. Press Esc to return to the standard view.</sub>
+</p>
 
 ## Features
 
-- Scan local fixed drives and folders, and browse results as they appear. Pause, resume, or cancel a scan.
-- Switch between **Size on disk** and **Logical size**. Size on disk reflects the allocated space, while logical size reflects the recorded file length.
-- Expand large folders in place or use Drill down mode to navigate into a folder. Filter the folder list by name, type, size, or days since modification.
-- Use the context menu to open a file with a Windows app or open and locate items in File Explorer.
-- Choose Simplified Chinese or English, either theme, and one of three text sizes. The light theme and standard text size are the defaults.
+- **See where the space goes.** Switch between size on disk and logical size to compare the space allocated by the file system with recorded file lengths.
+- **Browse folders in the treemap.** Expand large folders in place or use Drill down mode to enter a folder. Filter the folder list by name, type, size, or days since modification.
+- **Set up the view you prefer.** Pause, resume, or cancel scans. Right-click to use Windows Open with or locate an item in File Explorer. Choose between Chinese and English, two themes, and three text sizes. The light theme is the default.
 
-## Installation and usage
+## Usage
 
-1. Run `GlanceSpace_0.1.0_x64-setup.exe` on Windows 10 version 22H2 or Windows 11 (x64).
-2. Open GlanceSpace, choose a local fixed drive or a folder on it, and click **Scan**.
-3. Select an item in the treemap to see its details. Expand a folder and select its children to explore where the space is used.
+1. Run the installer and open GlanceSpace from the Start menu.
+2. Choose a local fixed drive or a folder on it and click **Scan**.
+3. Click a treemap item to see its details. Choose **Treemap only** when you want more room to explore.
 
-Scans read file system metadata with standard user permissions. GlanceSpace marks inaccessible items and any size on disk it cannot reliably measure. It skips the targets of symbolic links, junctions, and other reparse points.
+Scans run with standard user permissions. GlanceSpace marks inaccessible items and sizes it cannot reliably measure, and skips the targets of symbolic links, junctions, and other reparse points.
 
-## Run from source
+## Architecture
 
-You need Windows x64, Node.js 24+, the stable Rust MSVC toolchain, Visual Studio C++ Build Tools, and Microsoft Edge WebView2 Runtime.
+| Part | Implementation |
+| --- | --- |
+| Windows desktop shell | Tauri 2 |
+| Scanning and directory aggregation | Rust · `walkdir` |
+| Interface | React · TypeScript · Vite |
+| Treemap | Canvas 2D · `d3-hierarchy` |
 
-Run these commands from the repository root.
+## Development
+
+You need Windows x64, Node.js 24+, the stable Rust MSVC toolchain, Visual Studio C++ Build Tools, and Microsoft Edge WebView2 Runtime. Run these commands from the repository root.
 
 ```powershell
 npm ci
@@ -44,8 +71,6 @@ npm run desktop
 ```
 
 Use `npm run dev` to preview the frontend. Disk scanning requires the desktop app.
-
-### Tests and builds
 
 ```powershell
 npm test
@@ -55,10 +80,10 @@ cargo clippy --locked --manifest-path src-tauri/Cargo.toml -- -D warnings
 npm run desktop:build -- --debug
 ```
 
-`npm run desktop:build -- --debug` builds the debug executable. See the [project guidelines](AGENTS.md), [verification notes](docs/P0-VERIFICATION.md), and [D3 license notice](THIRD-PARTY-D3-LICENSE.txt) for details.
+[Project guidelines](AGENTS.md) · [Verification notes](docs/P0-VERIFICATION.md)
 
 ## Acknowledgments
 
 - SpaceSniffer inspired how users explore disk usage in the GlanceSpace treemap. [SpaceSniffer website](https://www.uderzo.it/main_products/space_sniffer/)
-- GlanceSpace uses `treemapSquarify` from `d3-hierarchy` for its treemap layout. [D3 documentation](https://d3js.org/d3-hierarchy/treemap#treemapSquarify)
+- GlanceSpace uses `treemapSquarify` from `d3-hierarchy` to lay out the treemap. [D3 documentation](https://d3js.org/d3-hierarchy/treemap#treemapSquarify) · [D3 license notice](THIRD-PARTY-D3-LICENSE.txt)
 - The layout algorithm comes from the work of Mark Bruls, Kees Huizing, and Jarke J. van Wijk. [Squarified Treemaps](https://vanwijk.win.tue.nl/stm.pdf)

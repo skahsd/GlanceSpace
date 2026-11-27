@@ -1,51 +1,76 @@
+<div align="center">
+
+<img src="src-tauri/icons/icon.png" alt="GlanceSpace 图标" width="96" height="96">
+
 # GlanceSpace
+
+**用交互式空间矩阵查看 Windows 磁盘占用**
+
+扫描本机磁盘或目录，快速找到占空间最多的文件和文件夹。支持边扫描边浏览，扫描只读取文件系统元数据。
+
+[下载](#下载) · [界面预览](#界面预览) · [怎么用](#怎么用) · [架构](#架构) · [开发](#开发) · [致谢](#致谢)
 
 **简体中文** · [English](README.en.md)
 
-GlanceSpace 是一款 Windows 磁盘空间分析器。它用交互式空间矩阵展示文件和目录的大小，帮你快速找到占用空间最多的项目。
+</div>
 
-[下载 Windows x64 安装包](https://github.com/skahsd/GlanceSpace/releases/download/v0.1.0/GlanceSpace_0.1.0_x64-setup.exe) · [查看所有版本](https://github.com/skahsd/GlanceSpace/releases)
+---
+
+## 下载
+
+| 适用平台 | 安装包 |
+| --- | --- |
+| Windows 10 22H2 或 Windows 11（x64） | [GlanceSpace 0.1.0 · EXE 安装程序](https://github.com/skahsd/GlanceSpace/releases/download/v0.1.0/GlanceSpace_0.1.0_x64-setup.exe) |
+
+[查看所有发布版本](https://github.com/skahsd/GlanceSpace/releases)
 
 ## 界面预览
 
-![GlanceSpace 标准视图，显示空间矩阵、所选目录详情和目录内容](docs/screenshots/overview.png)
+<p align="center">
+  <img src="docs/screenshots/overview.png" alt="标准视图展示磁盘空间矩阵、所选目录详情和目录列表" width="100%">
+  <br>
+  <sub>标准视图 · 点击矩阵中的目录，下方列表会显示该目录的内容。</sub>
+</p>
 
-**标准视图**。在空间矩阵里选中目录，下方列表会显示该目录的内容。
-
-![GlanceSpace 仅矩阵模式，展开 MySQL 和 Microsoft VS Code 目录](docs/screenshots/treemap-only.png)
-
-**仅矩阵模式**。隐藏列表和详情，保留扫描控件，把更多空间留给矩阵。按 `Esc` 可恢复标准视图。
+<p align="center">
+  <img src="docs/screenshots/treemap-only.png" alt="仅矩阵模式下的展开目录和文件分布" width="100%">
+  <br>
+  <sub>仅矩阵模式 · 隐藏列表和详情，保留扫描控件。按 Esc 恢复标准视图。</sub>
+</p>
 
 ## 主要功能
 
-- 扫描本机固定磁盘及其目录，边扫描边浏览。支持暂停、继续和取消。
-- 在 **磁盘占用** 和 **逻辑大小** 之间切换。前者反映文件系统实际分配的空间，后者反映文件记录的长度。
-- 在矩阵中原位展开大目录，或使用切换模式进入子目录。目录列表支持按名称、类型、大小和未修改天数筛选。
-- 从右键菜单调用 Windows 的「打开方式」，或在资源管理器中打开或定位项目。
-- 支持简体中文和 English、深浅主题以及三档字号。首次启动默认使用浅色主题和标准字号。
+- **看清空间用在哪。** 在磁盘占用和逻辑大小之间切换，分别查看文件系统分配的空间和文件长度。
+- **跟着矩阵浏览目录。** 大目录可以原位展开，也可以用切换模式进入子目录。目录列表支持按名称、类型、大小和未修改天数筛选。
+- **按自己的习惯使用。** 扫描可暂停、继续和取消。右键可调用 Windows「打开方式」或在资源管理器中定位项目。支持中英文、深浅主题和三档字号，默认使用浅色主题。
 
-## 安装与使用
+## 怎么用
 
-1. 在 Windows 10 22H2 或 Windows 11（x64）上运行 `GlanceSpace_0.1.0_x64-setup.exe`。
-2. 打开 GlanceSpace，选择本机固定磁盘或其中的目录，点击「开始扫描」。
-3. 点击矩阵中的项目查看详情。展开目录后，可以继续点击子项查看空间分布。
+1. 运行安装程序，从开始菜单打开 GlanceSpace。
+2. 选择本机固定磁盘或其中的目录，点击「开始扫描」。
+3. 点击空间矩阵中的项目查看详情。需要更多绘图空间时，点「仅矩阵」。
 
-扫描只读取文件系统元数据，以普通用户权限运行。无权访问的项目和无法可靠统计的占用会明确标记。扫描会跳过符号链接、联接目录等重解析点的目标。
+扫描以普通用户权限运行，会标记无法访问的条目和无法可靠统计的占用，并跳过符号链接、联接目录等重解析点的目标。
 
-## 从源码运行
+## 架构
 
-需要 Windows x64、Node.js 24+、Rust stable MSVC 工具链、Visual Studio C++ Build Tools 和 Microsoft Edge WebView2 Runtime。
+| 部分 | 实现 |
+| --- | --- |
+| Windows 桌面壳 | Tauri 2 |
+| 扫描与目录聚合 | Rust · `walkdir` |
+| 界面 | React · TypeScript · Vite |
+| 空间矩阵 | Canvas 2D · `d3-hierarchy` |
 
-在仓库根目录运行：
+## 开发
+
+需要 Windows x64、Node.js 24+、Rust stable MSVC 工具链、Visual Studio C++ Build Tools 和 Microsoft Edge WebView2 Runtime。在仓库根目录运行：
 
 ```powershell
 npm ci
 npm run desktop
 ```
 
-可用 `npm run dev` 单独预览前端。实际磁盘扫描需要桌面程序。
-
-### 测试与构建
+`npm run dev` 可单独预览前端。访问本机磁盘需要运行桌面程序。
 
 ```powershell
 npm test
@@ -55,10 +80,10 @@ cargo clippy --locked --manifest-path src-tauri/Cargo.toml -- -D warnings
 npm run desktop:build -- --debug
 ```
 
-`npm run desktop:build -- --debug` 生成调试程序。项目开发约定、验证记录和第三方声明见 [AGENTS.md](AGENTS.md)、[验证记录](docs/P0-VERIFICATION.md) 和 [D3 许可声明](THIRD-PARTY-D3-LICENSE.txt)。
+[项目开发约定](AGENTS.md) · [验证记录](docs/P0-VERIFICATION.md)
 
 ## 致谢
 
-- GlanceSpace 的空间矩阵浏览交互受到 SpaceSniffer 的启发。 [SpaceSniffer 官网](https://www.uderzo.it/main_products/space_sniffer/)
-- 矩阵布局使用 `d3-hierarchy` 的 `treemapSquarify` 实现。 [D3 文档](https://d3js.org/d3-hierarchy/treemap#treemapSquarify)
-- 布局算法源自 Mark Bruls、Kees Huizing 和 Jarke J. van Wijk 的研究。 [Squarified Treemaps](https://vanwijk.win.tue.nl/stm.pdf)
+- SpaceSniffer 启发了 GlanceSpace 的空间矩阵浏览交互。 [SpaceSniffer 官网](https://www.uderzo.it/main_products/space_sniffer/)
+- GlanceSpace 使用 `d3-hierarchy` 的 `treemapSquarify` 计算矩阵布局。 [D3 文档](https://d3js.org/d3-hierarchy/treemap#treemapSquarify) · [D3 许可声明](THIRD-PARTY-D3-LICENSE.txt)
+- 矩阵布局算法源自 Mark Bruls、Kees Huizing 和 Jarke J. van Wijk 的研究。 [Squarified Treemaps](https://vanwijk.win.tue.nl/stm.pdf)
