@@ -8,7 +8,7 @@ export type FontSize = typeof fontSizes[number];
 export const themes = ['dark', 'light'] as const;
 export type Theme = typeof themes[number];
 export type ViewSettings = { font: FontSize; theme: Theme; language: Language; modules: Record<Module, boolean> };
-export const defaultView: ViewSettings = { font: 14, theme: 'dark', language: defaultLanguage, modules: { map: true, list: true, details: true } };
+export const defaultView: ViewSettings = { font: 14, theme: 'light', language: defaultLanguage, modules: { map: true, list: true, details: true } };
 
 export function readView(raw: string | null): ViewSettings {
   try {

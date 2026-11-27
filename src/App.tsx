@@ -11,7 +11,7 @@ import { defaultView, fontSizes, moduleKeys, readView, themes, toggleModule } fr
 import type { FontSize } from './viewSettings.ts';
 import type { CSSProperties } from 'react';
 import { languageLabels, localizeDiagnostic, translator } from './i18n.ts';
-import type { Language, MessageKey } from './i18n.ts';
+import type { MessageKey } from './i18n.ts';
 
 const phaseLabels: Partial<Record<string, MessageKey>> = {
   idle: 'idle', ready: 'ready', scanning: 'scanning', paused: 'paused', cancelling: 'cancelling',
@@ -221,12 +221,17 @@ export default function App() {
               setView(old => toggleModule(old, key));
             }} />{t(key)}{key === 'map' && <small>{t('alwaysOn')}</small>}</label>)}
             <label className="font-setting">{t('font')}<select value={view.font} onChange={e => setView(old => ({ ...old, font: Number(e.target.value) as FontSize }))}>{fontSizes.map((size, index) => <option key={size} value={size}>{t(fontLabels[index])}</option>)}</select></label>
-            <div className="theme-setting" role="group" aria-label={t('theme')}><span>{t('theme')}</span><div className="theme-options">{themes.map(theme => <button key={theme} type="button" aria-pressed={view.theme === theme} className={view.theme === theme ? 'chosen' : ''} onClick={() => setView(old => ({ ...old, theme }))}>{t(theme)}</button>)}</div></div>
-            <label className="font-setting">{t('language')}
-              <select value={language} onChange={e => setView(old => ({ ...old, language: e.target.value as Language }))}>
-                {Object.entries(languageLabels).map(([code, label]) => <option key={code} value={code} lang={code}>{label}</option>)}
-              </select>
-            </label>
+            <div className="choice-setting" role="group" aria-label={t('theme')}><span>{t('theme')}</span><div className="choice-options">{themes.map(theme => <button key={theme} type="button" aria-pressed={view.theme === theme} className={view.theme === theme ? 'chosen' : ''} onClick={() => setView(old => ({ ...old, theme }))}>{t(theme)}</button>)}</div></div>
+            <div className="choice-setting" role="group" aria-label={t('language')}>
+              <span>{t('language')}</span>
+              <div className="choice-options">
+                {(['zh-CN', 'en'] as const).map(code => {
+                  const selected = language === code;
+                  return <button key={code} type="button" lang={code} aria-pressed={selected} className={selected ? 'chosen' : ''}
+                    onClick={() => setView(old => ({ ...old, language: code }))}>{languageLabels[code]}</button>;
+                })}
+              </div>
+            </div>
             <button className="button subtle" onClick={() => setView({ ...defaultView, language })}>{t('reset')}</button>
           </div>}
         </div>
