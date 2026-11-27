@@ -10,7 +10,7 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "windows": [{ "title": "GlanceSpace · 磁盘空间分析", "width": 1380, "height": 900, "minWidth": 1000, "minHeight": 700 }],
+    "windows": [{ "title": "GlanceSpace", "width": 1380, "height": 900, "minWidth": 1000, "minHeight": 700 }],
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: data:; connect-src ipc: http://ipc.localhost"
     }
