@@ -56,3 +56,9 @@ npm run desktop:build -- --debug
 ```
 
 `npm run desktop:build -- --debug` builds the debug executable. See the [project guidelines](AGENTS.md), [verification notes](docs/P0-VERIFICATION.md), and [D3 license notice](THIRD-PARTY-D3-LICENSE.txt) for details.
+
+## Acknowledgments
+
+- SpaceSniffer inspired how users explore disk usage in the GlanceSpace treemap. [SpaceSniffer website](https://www.uderzo.it/main_products/space_sniffer/)
+- GlanceSpace uses `treemapSquarify` from `d3-hierarchy` for its treemap layout. [D3 documentation](https://d3js.org/d3-hierarchy/treemap#treemapSquarify)
+- The layout algorithm comes from the work of Mark Bruls, Kees Huizing, and Jarke J. van Wijk. [Squarified Treemaps](https://vanwijk.win.tue.nl/stm.pdf)

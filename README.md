@@ -56,3 +56,9 @@ npm run desktop:build -- --debug
 ```
 
 `npm run desktop:build -- --debug` 生成调试程序。项目开发约定、验证记录和第三方声明见 [AGENTS.md](AGENTS.md)、[验证记录](docs/P0-VERIFICATION.md) 和 [D3 许可声明](THIRD-PARTY-D3-LICENSE.txt)。
+
+## 致谢
+
+- GlanceSpace 的空间矩阵浏览交互受到 SpaceSniffer 的启发。 [SpaceSniffer 官网](https://www.uderzo.it/main_products/space_sniffer/)
+- 矩阵布局使用 `d3-hierarchy` 的 `treemapSquarify` 实现。 [D3 文档](https://d3js.org/d3-hierarchy/treemap#treemapSquarify)
+- 布局算法源自 Mark Bruls、Kees Huizing 和 Jarke J. van Wijk 的研究。 [Squarified Treemaps](https://vanwijk.win.tue.nl/stm.pdf)
