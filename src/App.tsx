@@ -17,8 +17,9 @@ const date = (value: number | null) => value === null ? '未知' : new Date(valu
 const nodeState = (node: FsNode) => node.state === 'skipped' ? '已跳过' : node.state === 'partial' ? '部分未知' : !node.complete ? '未完成' : '已统计';
 const sizeLabel = (node: FsNode, metric: Metric) => `${metric === 'disk' && node.unknown ? '≥ ' : ''}${formatBytes(metricValue(node, metric))}`;
 
-function Icon({ name, size = 18 }: { name: 'map' | 'folder' | 'drive' | 'arrow' | 'shield' | 'view'; size?: number }) {
+function Icon({ name, size = 18 }: { name: 'map' | 'folder' | 'drive' | 'arrow' | 'shield' | 'view' | 'scan'; size?: number }) {
   const paths = {
+    scan: 'M9 3H4v5 M15 3h5v5 M20 16v5h-5 M4 16v5h5 M3 12h18',
     view: 'M4 6h16 M4 12h16 M4 18h16 M8 4v4 M16 10v4 M10 16v4',
     map: 'M3 3h18v18H3z M3 10h10 M13 3v18 M13 15h8',
     folder: 'M3 7V5h7l2 2h9v13H3z',
@@ -196,7 +197,7 @@ export default function App() {
         <select aria-label="固定磁盘" value="" disabled={running || starting} onChange={e => setRoot(e.target.value)}><option value="">磁盘</option>{drives.map(d => <option key={d} value={d}>{d}</option>)}</select>
         <label className="path-field"><Icon name="folder" /><input aria-label="扫描目录" value={root} disabled={running || starting} onChange={e => setRoot(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && desktop) void start(); }} placeholder="例如 D:\\Projects" /></label>
         <button className="button subtle" onClick={() => void browse()} disabled={!desktop || running || starting}>选择目录</button>
-        <button className="button primary" onClick={() => void start()} disabled={!desktop || running || starting}>{starting ? '正在启动…' : scanId ? '重新扫描' : '开始扫描'} <span>↗</span></button>
+        <button className="button primary scan-action" onClick={() => void start()} disabled={!desktop || running || starting}>{starting ? '正在启动…' : scanId ? '重新扫描' : '开始扫描'} <Icon name="scan" size={16} /></button>
         {running && <><button className="button subtle" disabled={progress.phase === 'cancelling'} onClick={() => void control(progress.phase === 'paused' ? 'resume' : 'pause')}>{progress.phase === 'paused' ? '继续' : '暂停'}</button><button className="button danger" disabled={progress.phase === 'cancelling'} onClick={() => void control('cancel')}>取消</button></>}
         <span className="scan-status" role="status">{phases[progress.phase] ?? progress.phase}</span>
         <div className="view-settings normal-only" ref={viewSettings}>
