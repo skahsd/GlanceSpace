@@ -80,10 +80,10 @@ cargo clippy --locked --manifest-path src-tauri/Cargo.toml -- -D warnings
 npm run desktop:build -- --debug
 ```
 
-[项目开发约定](AGENTS.md) · [验证记录](docs/P0-VERIFICATION.md)
-
 ## 致谢
 
-- SpaceSniffer 启发了 GlanceSpace 的空间矩阵浏览交互。 [SpaceSniffer 官网](https://www.uderzo.it/main_products/space_sniffer/)
-- GlanceSpace 使用 `d3-hierarchy` 的 `treemapSquarify` 计算矩阵布局。 [D3 文档](https://d3js.org/d3-hierarchy/treemap#treemapSquarify) · [D3 许可声明](THIRD-PARTY-D3-LICENSE.txt)
-- 矩阵布局算法源自 Mark Bruls、Kees Huizing 和 Jarke J. van Wijk 的研究。 [Squarified Treemaps](https://vanwijk.win.tue.nl/stm.pdf)
+- **灵感来源**
+  - [SpaceSniffer](https://www.uderzo.it/main_products/space_sniffer/) 为交互式空间矩阵提供灵感。
+  - [WizTree](https://diskanalyzer.com/) 是磁盘扫描的性能参考。
+- **算法参考** · [Squarified Treemaps](https://vanwijk.win.tue.nl/stm.pdf)
+- **主要依赖** · [Tauri](https://tauri.app/) · [`d3-hierarchy`](https://github.com/d3/d3-hierarchy) · [`walkdir`](https://github.com/BurntSushi/walkdir)

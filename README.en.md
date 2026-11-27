@@ -80,10 +80,10 @@ cargo clippy --locked --manifest-path src-tauri/Cargo.toml -- -D warnings
 npm run desktop:build -- --debug
 ```
 
-[Project guidelines](AGENTS.md) · [Verification notes](docs/P0-VERIFICATION.md)
-
 ## Acknowledgments
 
-- SpaceSniffer inspired how users explore disk usage in the GlanceSpace treemap. [SpaceSniffer website](https://www.uderzo.it/main_products/space_sniffer/)
-- GlanceSpace uses `treemapSquarify` from `d3-hierarchy` to lay out the treemap. [D3 documentation](https://d3js.org/d3-hierarchy/treemap#treemapSquarify) · [D3 license notice](THIRD-PARTY-D3-LICENSE.txt)
-- The layout algorithm comes from the work of Mark Bruls, Kees Huizing, and Jarke J. van Wijk. [Squarified Treemaps](https://vanwijk.win.tue.nl/stm.pdf)
+- **Inspiration**
+  - [SpaceSniffer](https://www.uderzo.it/main_products/space_sniffer/) inspired the interactive treemap.
+  - [WizTree](https://diskanalyzer.com/) serves as a reference for scan performance.
+- **Layout research** · [Squarified Treemaps](https://vanwijk.win.tue.nl/stm.pdf)
+- **Key dependencies** · [Tauri](https://tauri.app/) · [`d3-hierarchy`](https://github.com/d3/d3-hierarchy) · [`walkdir`](https://github.com/BurntSushi/walkdir)
