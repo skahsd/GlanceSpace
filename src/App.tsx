@@ -17,7 +17,7 @@ const phaseLabels: Partial<Record<string, MessageKey>> = {
   idle: 'idle', ready: 'ready', scanning: 'scanning', paused: 'paused', cancelling: 'cancelling',
   cancelled: 'cancelled', completed: 'completed', failed: 'failed',
 };
-const fontLabels = ['compact', 'standard', 'large', 'extraLarge'] as const;
+const fontLabels = ['small', 'standard', 'large'] as const;
 const terminal = (p: Progress) => ['idle', 'completed', 'cancelled', 'failed'].includes(p.phase);
 const nodeState = (node: FsNode): MessageKey => node.state === 'skipped' ? 'skipped' : node.state === 'partial' ? 'partial' : !node.complete ? 'incomplete' : 'counted';
 

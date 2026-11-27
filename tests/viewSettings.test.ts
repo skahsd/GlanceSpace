@@ -3,16 +3,22 @@ import test from 'node:test';
 import { defaultView, readView, toggleModule } from '../src/viewSettings.ts';
 
 test('standard font, dark theme and Chinese are the defaults', () => {
-  assert.equal(defaultView.font, 15);
+  assert.equal(defaultView.font, 14);
   assert.equal(defaultView.theme, 'dark');
   assert.equal(readView('{}').language, 'zh-CN');
   assert.equal(readView('{"language":"unexpected"}').language, 'zh-CN');
 });
 
 test('saved language, theme, font size and module choices restore together', () => {
-  const value = { ...toggleModule(defaultView, 'details'), font: 17, theme: 'light' as const, language: 'en' as const };
+  const value = { ...toggleModule(defaultView, 'details'), font: 13, theme: 'light' as const, language: 'en' as const };
   assert.deepEqual(readView(JSON.stringify(value)), value);
   assert.deepEqual(readView('{'), defaultView);
+});
+
+test('saved sizes from the previous menu map to the remaining sizes', () => {
+  for (const [previous, current] of [[14, 14], [15, 14], [16, 16], [17, 16]]) {
+    assert.equal(readView(JSON.stringify({ font: previous })).font, current);
+  }
 });
 
 test('the matrix stays visible while list and details remain configurable', () => {
