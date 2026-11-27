@@ -234,6 +234,28 @@
   background: var(--surface-raised);
   border-color: var(--line-strong);
 }
+.copy-feedback {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  max-width: calc(100% - 32px);
+  z-index: 21;
+  pointer-events: none;
+  font-size: var(--font-small, 12px);
+}
+.copy-feedback span {
+  display: block;
+  padding: 8px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  box-shadow: 0 6px 16px #0002;
+}
+.copy-feedback .warning {
+  background: var(--surface-raised);
+  color: var(--text);
+}
 .app-shell .context-menu,
 .app-shell .view-popover {
   border-color: var(--line-strong);

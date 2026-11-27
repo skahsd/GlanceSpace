@@ -6,7 +6,7 @@ import type { FsNode, History, MapMode, Metric, Page, Progress, TreeView } from 
 import Treemap from './Treemap.tsx';
 import type { Rect } from './treemap.ts';
 import ContextMenu from './ContextMenu.tsx';
-import type { MenuTarget } from './ContextMenu.tsx';
+import type { MenuAction, MenuTarget } from './ContextMenu.tsx';
 import { defaultView, fontSizes, moduleKeys, readView, themes, toggleModule } from './viewSettings.ts';
 import type { FontSize } from './viewSettings.ts';
 import type { CSSProperties } from 'react';
@@ -17,6 +17,7 @@ const phaseLabels: Partial<Record<string, MessageKey>> = {
   idle: 'idle', ready: 'ready', scanning: 'scanning', paused: 'paused', cancelling: 'cancelling',
   cancelled: 'cancelled', completed: 'completed', failed: 'failed',
 };
+const canDrill = (node: FsNode) => node.id >= 0 && node.isDir && node.state !== 'skipped';
 const fontLabels = ['small', 'standard', 'large'] as const;
 const terminal = (p: Progress) => ['idle', 'completed', 'cancelled', 'failed'].includes(p.phase);
 const nodeState = (node: FsNode): MessageKey => node.state === 'skipped' ? 'skipped' : node.state === 'partial' ? 'partial' : !node.complete ? 'incomplete' : 'counted';
@@ -62,6 +63,8 @@ export default function App() {
   const [filter, setFilter] = useState({ pattern: '', kind: 'all', minSize: '', olderThanDays: '' });
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState('');
+  const [copyFeedback, setCopyFeedback] = useState<{ succeeded: boolean } | null>(null);
+  const copyRequest = useRef(0);
   const [starting, setStarting] = useState(false);
   const generation = useRef(0);
   const phase = useRef('idle');
@@ -77,6 +80,11 @@ export default function App() {
   useEffect(() => { localStorage.setItem('glancespace.metric', metric); }, [metric]);
   useEffect(() => { localStorage.setItem('glancespace.view', JSON.stringify(view)); }, [view]);
   useEffect(() => { document.documentElement.lang = language; }, [language]);
+  useEffect(() => {
+    if (!copyFeedback) return;
+    const timer = window.setTimeout(() => setCopyFeedback(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [copyFeedback]);
   useEffect(() => {
     if (!showViewSettings) return;
     const close = (e: PointerEvent) => { if (!viewSettings.current?.contains(e.target as Node)) setShowViewSettings(false); };
@@ -158,7 +166,7 @@ export default function App() {
     catch (e) { setError(String(e)); }
   }
   function drill(node: FsNode) {
-    if (node.id < 0 || !node.isDir || node.state === 'skipped') return;
+    if (!canDrill(node)) return;
     setHistory(h => navigate(h, node.id)); setListNodeId(node.id); setOffset(0); setSelected(node); setError('');
   }
   const mapItems = useMemo(() => tree?.directory.id === nodeId ? branchItems(tree) : [], [tree, nodeId]);
@@ -189,8 +197,30 @@ export default function App() {
     if (scanId === null || node.id < 0 || opening) return;
     setSelected(node); setMenu({ node, scanId, x, y });
   }
-  async function external(action: 'open_with' | 'show_in_explorer', target: MenuTarget) {
-    closeMenu(); setOpening(true); setError('');
+  async function copyPath(path: string) {
+    const request = ++copyRequest.current;
+    setCopyFeedback(null);
+    let succeeded = false;
+    try {
+      await navigator.clipboard.writeText(path);
+      succeeded = true;
+    } catch {
+      // The clipboard can be unavailable or refuse a write.
+    }
+    if (request === copyRequest.current) setCopyFeedback({ succeeded });
+  }
+  async function runMenuAction(action: MenuAction, target: MenuTarget) {
+    closeMenu();
+    if (target.scanId !== scanId) return;
+    if (action === 'copy_path') {
+      await copyPath(target.node.path);
+      return;
+    }
+    if (action === 'enter_folder') {
+      drill(target.node);
+      return;
+    }
+    setOpening(true); setError('');
     try {
       const message = await invoke<string | null>(action, { scanId: target.scanId, nodeId: target.node.id });
       if (message) setError(message);
@@ -249,10 +279,10 @@ export default function App() {
         {(error || progress.message || opening) && <div className="error" role={opening ? 'status' : 'alert'}><span title={diagnostic}>{opening ? t('opening') : diagnostic}</span>{error && <button aria-label={t('dismiss')} onClick={() => setError('')}>×</button>}</div>}
         <div className="visual-row"><div className="map-panel"><div className="panel-caption"><strong>{t('map')}</strong><div className="map-totals" aria-label={t('scanSizes')} title={progress.unknown ? t('unknownDisk', { count: progress.unknown.toLocaleString(language) }) : t('scanTotal')}><span>{t('disk')} <b>{scanId === null ? '—' : (progress.unknown ? '≥ ' : '') + formatBytes(progress.diskSize)}</b></span><span>{t('logical')} <b>{scanId === null ? '—' : formatBytes(progress.logicalSize)}</b></span></div></div><Treemap key={`${scanId}:${nodeId}`} items={mapItems} branches={branches} t={t} theme={view.theme} metric={metric} fontSize={view.font} selected={selectedNode?.id} onActivate={mapClick} onSelect={setSelected} onContext={context} onCollapse={ids => setExpanded(old => ids.reduce((next, id) => collapseExpanded(next, id, allNodes), old))} /><div className="map-legend"><span>{t('legend', { metric: metricLabel })}</span>{(tree?.truncated || tree?.branches.some(b => b.truncated)) && <span>{t('merged')}</span>}</div></div>
           <aside className="inspector normal-only" hidden={!modules.details} aria-label={t('selectedDetails')}><h2 title={selectedNode?.name}>{selectedNode?.name || t('itemDetails')}</h2>{selectedNode ? <>
-            <button className="detail-path" title={t('copyPath', { path: selectedNode.path })} onClick={() => void navigator.clipboard.writeText(selectedNode.path).catch(e => setError(String(e)))}>{selectedNode.path}</button><div className={`state-chip ${selectedNode.complete ? '' : 'warning'}`}>{t(nodeState(selectedNode))}</div>
+            <button className="detail-path" title={t('copyPath', { path: selectedNode.path })} onClick={() => void copyPath(selectedNode.path)}>{selectedNode.path}</button><div className={`state-chip ${selectedNode.complete ? '' : 'warning'}`}>{t(nodeState(selectedNode))}</div>
             <dl><dt>{t('disk')}</dt><dd>{sizeLabel(selectedNode, 'disk')}</dd><dt>{t('logical')}</dt><dd>{sizeLabel(selectedNode, 'logical')}</dd><dt>{t('modified')}</dt><dd>{date(selectedNode.modified)}</dd></dl>
             {selectedNode.message && <p className="detail-message" title={detailMessage}>{detailMessage}</p>}
-            {selectedNode.isDir && selectedNode.state !== 'skipped' && selectedNode.id !== nodeId && <button className="button subtle full" onClick={() => drill(selectedNode)}>{t('enterFolder')}</button>}
+            {canDrill(selectedNode) && selectedNode.id !== nodeId && <button className="button subtle full" onClick={() => drill(selectedNode)}>{t('enterFolder')}</button>}
           </> : <p className="detail-placeholder">{t('detailHint')}</p>}</aside>
         </div>
       </section>
@@ -274,6 +304,13 @@ export default function App() {
         <div className="list-footer"><span>{t('filterNote')}</span><div><button disabled={!page || offset === 0} onClick={() => setOffset(Math.max(0, offset - 100))}>{t('previous')}</button><span>{page?.total ? `${offset + 1}–${Math.min(offset + 100, page.total)} / ${page.total}` : '0 / 0'}</span><button disabled={!page || offset + 100 >= page.total} onClick={() => setOffset(offset + 100)}>{t('next')}</button></div></div>
       </section>
     </main>
-    {menu && <ContextMenu key={`${menu.scanId}:${menu.node.id}:${menu.x}:${menu.y}`} target={menu} t={t} onClose={closeMenu} onAction={(action, target) => void external(action, target)} />}
+    {menu && <ContextMenu key={`${menu.scanId}:${menu.node.id}:${menu.x}:${menu.y}`} target={menu}
+      canEnter={canDrill(menu.node) && menu.node.id !== nodeId} t={t} onClose={closeMenu}
+      onAction={(action, target) => void runMenuAction(action, target)} />}
+    <div className="copy-feedback" role="status">
+      {copyFeedback && <span className={copyFeedback.succeeded ? '' : 'warning'}>
+        {t(copyFeedback.succeeded ? 'pathCopied' : 'copyFailed')}
+      </span>}
+    </div>
   </div>;
 }

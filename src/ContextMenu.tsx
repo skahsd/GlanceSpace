@@ -3,8 +3,10 @@ import type { FsNode } from './model.ts';
 import type { Translate } from './i18n.ts';
 
 export interface MenuTarget { node: FsNode; scanId: number; x: number; y: number }
-export default function ContextMenu({ target, t, onClose, onAction }: {
-  target: MenuTarget; t: Translate; onClose: () => void; onAction: (action: 'open_with' | 'show_in_explorer', target: MenuTarget) => void;
+export type MenuAction = 'open_with' | 'show_in_explorer' | 'copy_path' | 'enter_folder';
+export default function ContextMenu({ target, canEnter, t, onClose, onAction }: {
+  target: MenuTarget; canEnter: boolean; t: Translate; onClose: () => void;
+  onAction: (action: MenuAction, target: MenuTarget) => void;
 }) {
   const menu = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -37,6 +39,8 @@ export default function ContextMenu({ target, t, onClose, onAction }: {
         buttons[next]?.focus();
       }
     }}>
+    {canEnter && <button role="menuitem" onClick={() => onAction('enter_folder', target)}>{t('menuEnterFolder')}</button>}
+    <button role="menuitem" onClick={() => onAction('copy_path', target)}>{t('menuCopyPath')}</button>
     {!target.node.isDir && <button role="menuitem" onClick={() => onAction('open_with', target)}>{t('openWith')}</button>}
     <button role="menuitem" onClick={() => onAction('show_in_explorer', target)}>{t(target.node.isDir ? 'explorerOpen' : 'explorerShow')}</button>
   </div>;

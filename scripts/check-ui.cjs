@@ -12,6 +12,12 @@ const { chromium } = require('playwright');
    const nodes=[make(0,null,'样本',80010,true),make(1,0,'大目录',60000,true),make(2,0,'文件.txt',20000),make(3,1,'子文件.txt',40000),make(4,1,'另一个文件.txt',20000),make(5,0,'小目录',1000,true),make(6,5,'tiny.txt',1000),...Array.from({length:110},(_,i)=>make(10+i,0,'长中文文件名-'.repeat(8)+i+'.txt',1))];
    nodes.forEach(n=>{n.childCount=nodes.filter(x=>x.parent===n.id).length});
    window.__nodes=nodes;window.__calls=[];window.__revision=1;window.__delay=0;window.__scanId=1;window.__phase='completed';window.__message=null;
+   Object.defineProperty(navigator, 'clipboard', {value: {
+    async writeText(text) {
+     if (window.__clipboardBlocked) throw new Error('Clipboard write refused');
+     window.__copiedPath = text;
+    }
+   }});
    window.__progress=()=>({phase:window.__phase,files:114,directories:2,logicalSize:80120,diskSize:80120,errors:0,skipped:0,unknown:0,revision:window.__revision,elapsedMs:50,message:window.__message});
    window.isTauri=true;window.__TAURI_INTERNALS__={transformCallback:()=>1,unregisterCallback:()=>{},invoke:async(cmd,args={})=>{
     window.__calls.push({cmd,args:JSON.parse(JSON.stringify(args))});
@@ -55,14 +61,39 @@ const { chromium } = require('playwright');
     return {overflow,rootFit:root.scrollWidth===root.clientWidth&&root.scrollHeight===root.clientHeight,controls,hidden:only?[...document.querySelectorAll('.normal-only')].every(e=>getComputedStyle(e).display==='none'):true};
    },only);
   }
+  if (width === 1000) {
+   await page.locator('.detail-path').click();
+   await page.locator('.copy-feedback').getByText('路径已复制', {exact:true}).waitFor();
+   assert.ok(await page.evaluate(() => window.__copiedPath === window.__nodes[0].path));
+   await page.evaluate(() => { window.__clipboardBlocked = true; });
+   await page.locator('.detail-path').click();
+   await page.locator('.copy-feedback').getByText('复制失败，无法写入剪贴板', {exact:true}).waitFor();
+   await page.evaluate(() => { window.__clipboardBlocked = false; });
+  }
   const normal=await checkLayout(false); assert.deepEqual(normal.overflow,['table-wrap']);assert.ok(normal.rootFit);assert.ok(normal.controls.every(c=>c.visible),JSON.stringify(normal.controls));
   async function point(id){return page.evaluate(async id=>{const {layout}=await import('/src/treemap.ts');const call=window.__calls.filter(c=>c.cmd==='get_view').at(-1);const b=document.querySelector('canvas').getBoundingClientRect();const rects=layout(window.__nodes.filter(n=>n.parent===call.args.nodeId),b.width,b.height,'disk',new Map(call.args.expanded.map(id=>[id,window.__nodes.filter(n=>n.parent===id)])));const r=rects.find(r=>r.node.id===id);return {x:b.x+r.x+Math.min(20,r.width/2),y:b.y+r.y+Math.min(12,r.height/2),width:r.width,height:r.height};},id)}
   let p=await point(1);await page.mouse.click(p.x,p.y);await page.waitForFunction(()=>window.__calls.some(c=>c.cmd==='get_view'&&c.args.expanded.includes(1)));await page.waitForTimeout(400);
   assert.equal(await page.locator('.breadcrumbs button').count(),2,'directory content follows the expanded matrix directory');
   assert.equal(await page.locator('tbody tr').count(),2,'directory list refreshes for the clicked matrix directory');
   p=await point(3);await page.mouse.click(p.x,p.y,{button:'right'});await page.getByRole('menuitem',{name:'打开方式…'}).click();assert.equal(await page.evaluate(()=>window.__calls.filter(c=>c.cmd==='open_with').at(-1).args.nodeId),3);
+  if (width === 1000) {
+   p=await point(3);
+   await page.mouse.click(p.x,p.y,{button:'right'});
+   assert.equal(await page.getByRole('menuitem',{name:'进入此目录',exact:true}).count(),0);
+   await page.getByRole('menuitem',{name:'复制路径',exact:true}).click();
+   await page.locator('.copy-feedback').getByText('路径已复制', {exact:true}).waitFor();
+   assert.ok(await page.evaluate(() => window.__copiedPath === window.__nodes.find(node => node.id === 3).path));
+  }
   await page.getByRole('button',{name:'仅矩阵',exact:true}).click();await page.waitForTimeout(350);const only=await checkLayout(true);assert.deepEqual(only.overflow,[]);assert.ok(only.hidden&&only.rootFit);assert.equal(await page.locator('.list-panel').isVisible(),false);
   p=await point(3);await page.mouse.click(p.x,p.y,{button:'right'});await page.keyboard.press('Escape');assert.equal(await page.locator('.map-only').count(),1,'Escape closes menu before exiting mode');await page.keyboard.press('Escape');assert.equal(await page.locator('.map-only').count(),0);
+  if (width === 1000) {
+   p=await point(1);
+   await page.mouse.click(p.x,p.y,{button:'right'});
+   await page.getByRole('menuitem',{name:'进入此目录',exact:true}).click();
+   await page.waitForFunction(() => window.__calls.some(c => c.cmd === 'get_view' && c.args.nodeId === 1));
+   assert.equal(await page.getByRole('button',{name:'展开模式',exact:true}).getAttribute('aria-pressed'),'true');
+   await page.getByRole('button',{name:'回到扫描根目录'}).click();
+  }
   await page.getByRole('button',{name:'切换模式',exact:true}).click();await page.waitForTimeout(400);p=await point(1);await page.mouse.dblclick(p.x,p.y);await page.waitForTimeout(500);assert.equal(await page.locator('.breadcrumbs button').count(),2,'double click only navigates once');
   const row=page.locator('tbody tr').filter({hasText:'子文件.txt'});await row.locator('button').focus();await page.keyboard.press('Shift+F10');await page.getByRole('menuitem',{name:'在资源管理器中显示'}).click();assert.equal(await page.evaluate(()=>window.__calls.filter(c=>c.cmd==='show_in_explorer').at(-1).args.nodeId),3);
   await page.getByRole('button',{name:'回到扫描根目录'}).click();await page.getByRole('button',{name:'展开模式',exact:true}).click();await page.waitForTimeout(400);p=await point(5);assert.ok(p.width<160||p.height<100);await page.mouse.click(p.x,p.y);await page.waitForTimeout(400);assert.equal(await page.locator('.breadcrumbs button').last().textContent(),'小目录');
