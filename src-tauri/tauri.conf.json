@@ -15,5 +15,9 @@
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: data:; connect-src ipc: http://ipc.localhost"
     }
   },
-  "bundle": { "active": false, "icon": ["icons/icon.ico"] }
+  "bundle": {
+    "active": false,
+    "icon": ["icons/icon.ico"],
+    "windows": { "nsis": { "installerIcon": "icons/icon.ico" } }
+  }
 }
