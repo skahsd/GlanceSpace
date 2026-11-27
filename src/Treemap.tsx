@@ -4,6 +4,12 @@ import type { FsNode, Metric } from './model.ts';
 import { hitTest, interpolateRects, layout } from './treemap.ts';
 import type { Rect } from './treemap.ts';
 import type { Translate } from './i18n.ts';
+import type { Theme } from './viewSettings.ts';
+
+const expandedColors = {
+  dark: { background: '#24394b', text: '#fff' },
+  light: { background: '#e9f0f5', text: '#1b2a38' },
+} as const;
 
 const colors = ['#367fa4', '#398b79', '#7762aa', '#a47a47', '#5578b4', '#9a5e79', '#4a9396'];
 function color(node: FsNode): string {
@@ -14,8 +20,8 @@ function color(node: FsNode): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
-export default function Treemap({ items, branches, t, metric, fontSize, selected, onActivate, onSelect, onContext, onCollapse }: {
-  items: FsNode[]; branches: Map<number, FsNode[]>; t: Translate; metric: Metric; fontSize: number; selected: number | undefined;
+export default function Treemap({ items, branches, t, theme, metric, fontSize, selected, onActivate, onSelect, onContext, onCollapse }: {
+  items: FsNode[]; branches: Map<number, FsNode[]>; t: Translate; theme: Theme; metric: Metric; fontSize: number; selected: number | undefined;
   onActivate: (rect: Rect) => void; onSelect: (node: FsNode) => void;
   onContext: (node: FsNode, x: number, y: number) => void; onCollapse: (ids: number[]) => void;
 }) {
@@ -24,6 +30,8 @@ export default function Treemap({ items, branches, t, metric, fontSize, selected
   const rects = useRef<Rect[]>([]);
   const selectedRef = useRef(selected);
   selectedRef.current = selected;
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
   const collapseRef = useRef(onCollapse);
   collapseRef.current = onCollapse;
   const drawRef = useRef<() => void>(() => {});
@@ -67,12 +75,13 @@ export default function Treemap({ items, branches, t, metric, fontSize, selected
       if (!ctx) return;
       ctx.clearRect(0, 0, size.width, size.height);
       ctx.textBaseline = 'top';
+      const expandedPalette = expandedColors[themeRef.current];
       for (const rect of rects.current) {
         const { node, x, y, width, height } = rect;
         if (width < 3 || height < 3) continue;
         ctx.save(); ctx.globalAlpha = rect.alpha ?? 1;
         ctx.beginPath(); ctx.rect(x, y, width, height); ctx.clip();
-        ctx.fillStyle = rect.expanded ? '#24394b' : color(node);
+        ctx.fillStyle = rect.expanded ? expandedPalette.background : color(node);
         ctx.fillRect(x + 1, y + 1, Math.max(0, width - 2), Math.max(0, height - 2));
         if (node.unknown > 0 && !rect.expanded) {
           ctx.fillStyle = '#ffffff12';
@@ -84,7 +93,8 @@ export default function Treemap({ items, branches, t, metric, fontSize, selected
         }
         if (width > fontSize * 5 && height >= fontSize + (rect.expanded ? 6 : 14)) {
           ctx.beginPath(); ctx.rect(x + 6, y + 4, Math.max(0, width - 12), rect.expanded ? 20 : height - 8); ctx.clip();
-          ctx.fillStyle = '#fff'; ctx.font = '500 ' + fontSize + 'px "Segoe UI", "Microsoft YaHei", sans-serif';
+          ctx.fillStyle = rect.expanded ? expandedPalette.text : '#fff';
+          ctx.font = '500 ' + fontSize + 'px "Segoe UI", "Microsoft YaHei", sans-serif';
           ctx.fillText(`${rect.expanded ? '⊟ ' : node.isDir ? '▣ ' : ''}${node.id < 0 ? t('otherItems') : node.name}`, x + 8, y + (rect.expanded ? 5 : 9));
           if (height > 50 && !rect.expanded) {
             ctx.fillStyle = '#ffffffb8'; ctx.font = Math.max(12, fontSize - 1) + 'px "Segoe UI", sans-serif';
@@ -106,7 +116,7 @@ export default function Treemap({ items, branches, t, metric, fontSize, selected
     frame = requestAnimationFrame(animate);
     return () => { cancelAnimationFrame(frame); drawRef.current = () => {}; };
   }, [items, branches, size, ratio, metric, fontSize, reduced, t]);
-  useEffect(() => { drawRef.current(); }, [selected]);
+  useEffect(() => { drawRef.current(); }, [selected, theme]);
   const target = (event: React.MouseEvent<HTMLCanvasElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect();
     return hitTest(rects.current, event.clientX - bounds.left, event.clientY - bounds.top);
