@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Channel, invoke, isTauri } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { branchItems, collapseExpanded, emptyProgress, formatBytes, metricValue, navigate } from './model.ts';
@@ -9,7 +9,7 @@ import ContextMenu from './ContextMenu.tsx';
 import type { MenuAction, MenuTarget } from './ContextMenu.tsx';
 import { defaultView, fontSizes, moduleKeys, readView, themes, toggleModule } from './viewSettings.ts';
 import type { FontSize } from './viewSettings.ts';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, MouseEvent } from 'react';
 import { languageLabels, localizeDiagnostic, translator } from './i18n.ts';
 import type { MessageKey } from './i18n.ts';
 
@@ -18,6 +18,7 @@ const phaseLabels: Partial<Record<string, MessageKey>> = {
   cancelled: 'cancelled', completed: 'completed', failed: 'failed',
 };
 const canDrill = (node: FsNode) => node.id >= 0 && node.isDir && node.state !== 'skipped';
+type CopyFeedback = { succeeded: boolean; x: number; y: number };
 const fontLabels = ['small', 'standard', 'large'] as const;
 const terminal = (p: Progress) => ['idle', 'completed', 'cancelled', 'failed'].includes(p.phase);
 const nodeState = (node: FsNode): MessageKey => node.state === 'skipped' ? 'skipped' : node.state === 'partial' ? 'partial' : !node.complete ? 'incomplete' : 'counted';
@@ -63,7 +64,8 @@ export default function App() {
   const [filter, setFilter] = useState({ pattern: '', kind: 'all', minSize: '', olderThanDays: '' });
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState('');
-  const [copyFeedback, setCopyFeedback] = useState<{ succeeded: boolean } | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState<CopyFeedback | null>(null);
+  const copyBubble = useRef<HTMLDivElement>(null);
   const copyRequest = useRef(0);
   const [starting, setStarting] = useState(false);
   const generation = useRef(0);
@@ -85,6 +87,25 @@ export default function App() {
     const timer = window.setTimeout(() => setCopyFeedback(null), 3000);
     return () => window.clearTimeout(timer);
   }, [copyFeedback]);
+  useLayoutEffect(() => {
+    const bubble = copyBubble.current;
+    if (!copyFeedback || !bubble) return;
+    const { x, y } = copyFeedback;
+    const position = () => {
+      const { width, height } = bubble.getBoundingClientRect();
+      const gap = 10;
+      const edge = 8;
+      const leftLimit = window.innerWidth - width - edge;
+      const topLimit = window.innerHeight - height - edge;
+      const left = x + gap <= leftLimit ? x + gap : x - width - gap;
+      const top = y - height - gap >= edge ? y - height - gap : y + gap;
+      bubble.style.left = `${Math.max(edge, Math.min(left, leftLimit))}px`;
+      bubble.style.top = `${Math.max(edge, Math.min(top, topLimit))}px`;
+    };
+    position();
+    window.addEventListener('resize', position);
+    return () => window.removeEventListener('resize', position);
+  }, [copyFeedback, language, view.font]);
   useEffect(() => {
     if (!showViewSettings) return;
     const close = (e: PointerEvent) => { if (!viewSettings.current?.contains(e.target as Node)) setShowViewSettings(false); };
@@ -197,7 +218,13 @@ export default function App() {
     if (scanId === null || node.id < 0 || opening) return;
     setSelected(node); setMenu({ node, scanId, x, y });
   }
-  async function copyPath(path: string) {
+  async function copyPath(path: string, event: MouseEvent<HTMLButtonElement>) {
+    let { clientX: x, clientY: y } = event;
+    if (event.detail === 0) {
+      const bounds = event.currentTarget.getBoundingClientRect();
+      x = bounds.left + bounds.width / 2;
+      y = bounds.top + bounds.height / 2;
+    }
     const request = ++copyRequest.current;
     setCopyFeedback(null);
     let succeeded = false;
@@ -207,13 +234,13 @@ export default function App() {
     } catch {
       // The clipboard can be unavailable or refuse a write.
     }
-    if (request === copyRequest.current) setCopyFeedback({ succeeded });
+    if (request === copyRequest.current) setCopyFeedback({ succeeded, x, y });
   }
-  async function runMenuAction(action: MenuAction, target: MenuTarget) {
+  async function runMenuAction(action: MenuAction, target: MenuTarget, event: MouseEvent<HTMLButtonElement>) {
     closeMenu();
     if (target.scanId !== scanId) return;
     if (action === 'copy_path') {
-      await copyPath(target.node.path);
+      await copyPath(target.node.path, event);
       return;
     }
     if (action === 'enter_folder') {
@@ -279,7 +306,7 @@ export default function App() {
         {(error || progress.message || opening) && <div className="error" role={opening ? 'status' : 'alert'}><span title={diagnostic}>{opening ? t('opening') : diagnostic}</span>{error && <button aria-label={t('dismiss')} onClick={() => setError('')}>×</button>}</div>}
         <div className="visual-row"><div className="map-panel"><div className="panel-caption"><strong>{t('map')}</strong><div className="map-totals" aria-label={t('scanSizes')} title={progress.unknown ? t('unknownDisk', { count: progress.unknown.toLocaleString(language) }) : t('scanTotal')}><span>{t('disk')} <b>{scanId === null ? '—' : (progress.unknown ? '≥ ' : '') + formatBytes(progress.diskSize)}</b></span><span>{t('logical')} <b>{scanId === null ? '—' : formatBytes(progress.logicalSize)}</b></span></div></div><Treemap key={`${scanId}:${nodeId}`} items={mapItems} branches={branches} t={t} theme={view.theme} metric={metric} fontSize={view.font} selected={selectedNode?.id} onActivate={mapClick} onSelect={setSelected} onContext={context} onCollapse={ids => setExpanded(old => ids.reduce((next, id) => collapseExpanded(next, id, allNodes), old))} /><div className="map-legend"><span>{t('legend', { metric: metricLabel })}</span>{(tree?.truncated || tree?.branches.some(b => b.truncated)) && <span>{t('merged')}</span>}</div></div>
           <aside className="inspector normal-only" hidden={!modules.details} aria-label={t('selectedDetails')}><h2 title={selectedNode?.name}>{selectedNode?.name || t('itemDetails')}</h2>{selectedNode ? <>
-            <button className="detail-path" title={t('copyPath', { path: selectedNode.path })} onClick={() => void copyPath(selectedNode.path)}>{selectedNode.path}</button><div className={`state-chip ${selectedNode.complete ? '' : 'warning'}`}>{t(nodeState(selectedNode))}</div>
+            <button className="detail-path" title={t('copyPath', { path: selectedNode.path })} onClick={event => void copyPath(selectedNode.path, event)}>{selectedNode.path}</button><div className={`state-chip ${selectedNode.complete ? '' : 'warning'}`}>{t(nodeState(selectedNode))}</div>
             <dl><dt>{t('disk')}</dt><dd>{sizeLabel(selectedNode, 'disk')}</dd><dt>{t('logical')}</dt><dd>{sizeLabel(selectedNode, 'logical')}</dd><dt>{t('modified')}</dt><dd>{date(selectedNode.modified)}</dd></dl>
             {selectedNode.message && <p className="detail-message" title={detailMessage}>{detailMessage}</p>}
             {canDrill(selectedNode) && selectedNode.id !== nodeId && <button className="button subtle full" onClick={() => drill(selectedNode)}>{t('enterFolder')}</button>}
@@ -306,8 +333,8 @@ export default function App() {
     </main>
     {menu && <ContextMenu key={`${menu.scanId}:${menu.node.id}:${menu.x}:${menu.y}`} target={menu}
       canEnter={canDrill(menu.node) && menu.node.id !== nodeId} t={t} onClose={closeMenu}
-      onAction={(action, target) => void runMenuAction(action, target)} />}
-    <div className="copy-feedback" role="status">
+      onAction={runMenuAction} />}
+    <div ref={copyBubble} className="copy-feedback" role="status">
       {copyFeedback && <span className={copyFeedback.succeeded ? '' : 'warning'}>
         {t(copyFeedback.succeeded ? 'pathCopied' : 'copyFailed')}
       </span>}

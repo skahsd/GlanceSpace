@@ -61,13 +61,26 @@ const { chromium } = require('playwright');
     return {overflow,rootFit:root.scrollWidth===root.clientWidth&&root.scrollHeight===root.clientHeight,controls,hidden:only?[...document.querySelectorAll('.normal-only')].every(e=>getComputedStyle(e).display==='none'):true};
    },only);
   }
+  async function checkCopyBubble(message, x, y) {
+   const bubble = page.locator('.copy-feedback').getByText(message, {exact:true});
+   await bubble.waitFor();
+   const bounds = await bubble.boundingBox();
+   assert.ok(bounds && bounds.x >= 7 && bounds.y >= 7 && bounds.x + bounds.width <= width - 7 && bounds.y + bounds.height <= height - 7, 'copy feedback fits inside the window');
+   const dx = Math.max(bounds.x - x, x - bounds.x - bounds.width, 0);
+   const dy = Math.max(bounds.y - y, y - bounds.y - bounds.height, 0);
+   assert.ok(dx <= 12 && dy <= 12, 'copy feedback stays next to the activation point');
+  }
   if (width === 1000) {
-   await page.locator('.detail-path').click();
-   await page.locator('.copy-feedback').getByText('路径已复制', {exact:true}).waitFor();
+   const detail = page.locator('.detail-path');
+   const bounds = await detail.boundingBox();
+   const x = Math.floor(bounds.x + bounds.width - 4);
+   const y = Math.floor(bounds.y + bounds.height / 2);
+   await page.mouse.click(x, y);
+   await checkCopyBubble('路径已复制', x, y);
    assert.ok(await page.evaluate(() => window.__copiedPath === window.__nodes[0].path));
    await page.evaluate(() => { window.__clipboardBlocked = true; });
-   await page.locator('.detail-path').click();
-   await page.locator('.copy-feedback').getByText('复制失败，无法写入剪贴板', {exact:true}).waitFor();
+   await detail.press('Enter');
+   await checkCopyBubble('复制失败，无法写入剪贴板', bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
    await page.evaluate(() => { window.__clipboardBlocked = false; });
   }
   const normal=await checkLayout(false); assert.deepEqual(normal.overflow,['table-wrap']);assert.ok(normal.rootFit);assert.ok(normal.controls.every(c=>c.visible),JSON.stringify(normal.controls));
@@ -80,8 +93,13 @@ const { chromium } = require('playwright');
    p=await point(3);
    await page.mouse.click(p.x,p.y,{button:'right'});
    assert.equal(await page.getByRole('menuitem',{name:'进入此目录',exact:true}).count(),0);
-   await page.getByRole('menuitem',{name:'复制路径',exact:true}).click();
-   await page.locator('.copy-feedback').getByText('路径已复制', {exact:true}).waitFor();
+   const copyItem = page.getByRole('menuitem',{name:'复制路径',exact:true});
+   await copyItem.waitFor();
+   const bounds = await copyItem.boundingBox();
+   const x = Math.floor(bounds.x + bounds.width / 2);
+   const y = Math.floor(bounds.y + bounds.height / 2);
+   await page.mouse.click(x, y);
+   await checkCopyBubble('路径已复制', x, y);
    assert.ok(await page.evaluate(() => window.__copiedPath === window.__nodes.find(node => node.id === 3).path));
   }
   await page.getByRole('button',{name:'仅矩阵',exact:true}).click();await page.waitForTimeout(350);const only=await checkLayout(true);assert.deepEqual(only.overflow,[]);assert.ok(only.hidden&&only.rootFit);assert.equal(await page.locator('.list-panel').isVisible(),false);
