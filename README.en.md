@@ -20,7 +20,7 @@ Scan a local drive or folder to find the files and folders taking up the most sp
 
 | Platform | Installer |
 | --- | --- |
-| Windows 10 version 22H2 or Windows 11 (x64) | [GlanceSpace 0.1.0 · EXE installer](https://github.com/skahsd/GlanceSpace/releases/download/v0.1.0/GlanceSpace_0.1.0_x64-setup.exe) |
+| Windows 10 version 22H2 or Windows 11 (x64) | [Download the latest EXE installer](https://github.com/skahsd/GlanceSpace/releases/latest) |
 
 [View all releases](https://github.com/skahsd/GlanceSpace/releases)
 

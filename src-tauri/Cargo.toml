@@ -1,6 +1,6 @@
 [package]
 name = "glancespace"
-version = "0.1.0"
+version = "0.1.1"
 description = "Windows read-only disk space analyzer"
 edition = "2021"
 rust-version = "1.85"

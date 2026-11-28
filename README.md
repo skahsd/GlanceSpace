@@ -20,7 +20,7 @@
 
 | 适用平台 | 安装包 |
 | --- | --- |
-| Windows 10 22H2 或 Windows 11（x64） | [GlanceSpace 0.1.0 · EXE 安装程序](https://github.com/skahsd/GlanceSpace/releases/download/v0.1.0/GlanceSpace_0.1.0_x64-setup.exe) |
+| Windows 10 22H2 或 Windows 11（x64） | [下载最新版 · EXE 安装程序](https://github.com/skahsd/GlanceSpace/releases/latest) |
 
 [查看所有发布版本](https://github.com/skahsd/GlanceSpace/releases)
 
