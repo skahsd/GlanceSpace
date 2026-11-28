@@ -84,7 +84,7 @@ export default function App() {
   useEffect(() => { document.documentElement.lang = language; }, [language]);
   useEffect(() => {
     if (!copyFeedback) return;
-    const timer = window.setTimeout(() => setCopyFeedback(null), 3000);
+    const timer = window.setTimeout(() => setCopyFeedback(null), 1000);
     return () => window.clearTimeout(timer);
   }, [copyFeedback]);
   useLayoutEffect(() => {
@@ -236,13 +236,9 @@ export default function App() {
     }
     if (request === copyRequest.current) setCopyFeedback({ succeeded, x, y });
   }
-  async function runMenuAction(action: MenuAction, target: MenuTarget, event: MouseEvent<HTMLButtonElement>) {
+  async function runMenuAction(action: MenuAction, target: MenuTarget) {
     closeMenu();
     if (target.scanId !== scanId) return;
-    if (action === 'copy_path') {
-      await copyPath(target.node.path, event);
-      return;
-    }
     if (action === 'enter_folder') {
       drill(target.node);
       return;
@@ -333,7 +329,10 @@ export default function App() {
     </main>
     {menu && <ContextMenu key={`${menu.scanId}:${menu.node.id}:${menu.x}:${menu.y}`} target={menu}
       canEnter={canDrill(menu.node) && menu.node.id !== nodeId} t={t} onClose={closeMenu}
-      onAction={runMenuAction} />}
+      onCopy={(target, event) => {
+        if (target.scanId === scanId) void copyPath(target.node.path, event);
+        closeMenu();
+      }} onAction={runMenuAction} />}
     <div ref={copyBubble} className="copy-feedback" role="status">
       {copyFeedback && <span className={copyFeedback.succeeded ? '' : 'warning'}>
         {t(copyFeedback.succeeded ? 'pathCopied' : 'copyFailed')}

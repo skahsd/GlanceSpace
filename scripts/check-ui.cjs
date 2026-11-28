@@ -101,6 +101,7 @@ const { chromium } = require('playwright');
    await page.mouse.click(x, y);
    await checkCopyBubble('路径已复制', x, y);
    assert.ok(await page.evaluate(() => window.__copiedPath === window.__nodes.find(node => node.id === 3).path));
+   await page.locator('.copy-feedback span').waitFor({state:'hidden',timeout:2000});
   }
   await page.getByRole('button',{name:'仅矩阵',exact:true}).click();await page.waitForTimeout(350);const only=await checkLayout(true);assert.deepEqual(only.overflow,[]);assert.ok(only.hidden&&only.rootFit);assert.equal(await page.locator('.list-panel').isVisible(),false);
   p=await point(3);await page.mouse.click(p.x,p.y,{button:'right'});await page.keyboard.press('Escape');assert.equal(await page.locator('.map-only').count(),1,'Escape closes menu before exiting mode');await page.keyboard.press('Escape');assert.equal(await page.locator('.map-only').count(),0);

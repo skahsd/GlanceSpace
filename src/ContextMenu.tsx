@@ -4,10 +4,11 @@ import type { FsNode } from './model.ts';
 import type { Translate } from './i18n.ts';
 
 export interface MenuTarget { node: FsNode; scanId: number; x: number; y: number }
-export type MenuAction = 'open_with' | 'show_in_explorer' | 'copy_path' | 'enter_folder';
-export default function ContextMenu({ target, canEnter, t, onClose, onAction }: {
+export type MenuAction = 'open_with' | 'show_in_explorer' | 'enter_folder';
+export default function ContextMenu({ target, canEnter, t, onClose, onCopy, onAction }: {
   target: MenuTarget; canEnter: boolean; t: Translate; onClose: () => void;
-  onAction: (action: MenuAction, target: MenuTarget, event: MouseEvent<HTMLButtonElement>) => void;
+  onCopy: (target: MenuTarget, event: MouseEvent<HTMLButtonElement>) => void;
+  onAction: (action: MenuAction, target: MenuTarget) => void;
 }) {
   const menu = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -40,9 +41,9 @@ export default function ContextMenu({ target, canEnter, t, onClose, onAction }: 
         buttons[next]?.focus();
       }
     }}>
-    {canEnter && <button role="menuitem" onClick={event => onAction('enter_folder', target, event)}>{t('menuEnterFolder')}</button>}
-    <button role="menuitem" onClick={event => onAction('copy_path', target, event)}>{t('menuCopyPath')}</button>
-    {!target.node.isDir && <button role="menuitem" onClick={event => onAction('open_with', target, event)}>{t('openWith')}</button>}
-    <button role="menuitem" onClick={event => onAction('show_in_explorer', target, event)}>{t(target.node.isDir ? 'explorerOpen' : 'explorerShow')}</button>
+    {canEnter && <button role="menuitem" onClick={() => onAction('enter_folder', target)}>{t('menuEnterFolder')}</button>}
+    <button role="menuitem" onClick={event => onCopy(target, event)}>{t('menuCopyPath')}</button>
+    {!target.node.isDir && <button role="menuitem" onClick={() => onAction('open_with', target)}>{t('openWith')}</button>}
+    <button role="menuitem" onClick={() => onAction('show_in_explorer', target)}>{t(target.node.isDir ? 'explorerOpen' : 'explorerShow')}</button>
   </div>;
 }
