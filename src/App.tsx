@@ -274,13 +274,13 @@ export default function App() {
               setView(old => toggleModule(old, key));
             }} />{t(key)}{key === 'map' && <small>{t('alwaysOn')}</small>}</label>)}
             <label className="font-setting">{t('font')}<select value={view.font} onChange={e => setView(old => ({ ...old, font: Number(e.target.value) as FontSize }))}>{fontSizes.map((size, index) => <option key={size} value={size}>{t(fontLabels[index])}</option>)}</select></label>
-            <div className="choice-setting" role="group" aria-label={t('theme')}><span>{t('theme')}</span><div className="choice-options">{themes.map(theme => <button key={theme} type="button" aria-pressed={view.theme === theme} className={view.theme === theme ? 'chosen' : ''} onClick={() => setView(old => ({ ...old, theme }))}>{t(theme)}</button>)}</div></div>
+            <div className="choice-setting" role="group" aria-label={t('theme')}><span>{t('theme')}</span><div className="choice-options">{themes.map(theme => <button key={theme} type="button" aria-pressed={view.theme === theme} onClick={() => setView(old => ({ ...old, theme }))}>{t(theme)}</button>)}</div></div>
             <div className="choice-setting" role="group" aria-label={t('language')}>
               <span>{t('language')}</span>
               <div className="choice-options">
                 {(['zh-CN', 'en'] as const).map(code => {
                   const selected = language === code;
-                  return <button key={code} type="button" lang={code} aria-pressed={selected} className={selected ? 'chosen' : ''}
+                  return <button key={code} type="button" lang={code} aria-pressed={selected}
                     onClick={() => setView(old => ({ ...old, language: code }))}>{languageLabels[code]}</button>;
                 })}
               </div>
@@ -296,8 +296,8 @@ export default function App() {
           <button aria-label={t('forward')} disabled={history.index === history.ids.length - 1} onClick={() => { setHistory(h => ({ ...h, index: h.index + 1 })); setOffset(0); }}><span className="forward"><Icon name="arrow" size={16} /></span></button>
           <button aria-label={t('scanRoot')} disabled={!page || nodeId === 0} onClick={() => page && drill(page.breadcrumbs[0])}>⌂</button>
         </div><nav className="breadcrumbs" aria-label={t('currentFolder')}>{page ? page.breadcrumbs.map((n, i) => <span key={n.id}>{i > 0 && <i>/</i>}<button title={n.path} onClick={() => drill(n)}>{i === 0 ? n.path : n.name}</button></span>) : <span>{t('chooseFolder')}</span>}</nav>
-        <div className="segmented" role="group" aria-label={t('sizeMetric')}><button aria-pressed={metric === 'disk'} className={metric === 'disk' ? 'chosen' : ''} onClick={() => setMetric('disk')}>{t('disk')}</button><button aria-pressed={metric === 'logical'} className={metric === 'logical' ? 'chosen' : ''} onClick={() => setMetric('logical')}>{t('logical')}</button></div>
-        <div className="segmented" role="group" aria-label={t('mapMode')}><button aria-pressed={mode === 'expand'} className={mode === 'expand' ? 'chosen' : ''} onClick={() => setMode('expand')}>{t('expand')}</button><button aria-pressed={mode === 'navigate'} className={mode === 'navigate' ? 'chosen' : ''} onClick={() => setMode('navigate')}>{t('navigate')}</button></div>
+        <div className="segmented" role="group" aria-label={t('sizeMetric')}><button aria-pressed={metric === 'disk'} onClick={() => setMetric('disk')}>{t('disk')}</button><button aria-pressed={metric === 'logical'} onClick={() => setMetric('logical')}>{t('logical')}</button></div>
+        <div className="segmented" role="group" aria-label={t('mapMode')}><button aria-pressed={mode === 'expand'} onClick={() => setMode('expand')}>{t('expand')}</button><button aria-pressed={mode === 'navigate'} onClick={() => setMode('navigate')}>{t('navigate')}</button></div>
         <button className="button subtle" aria-pressed={mapOnly} onClick={() => { setMapOnly(v => !v); closeMenu(); }}>{mapOnly ? t('exitMapOnly') : t('mapOnly')}</button></div>
         {(error || progress.message || opening) && <div className="error" role={opening ? 'status' : 'alert'}><span title={diagnostic}>{opening ? t('opening') : diagnostic}</span>{error && <button aria-label={t('dismiss')} onClick={() => setError('')}>×</button>}</div>}
         <div className="visual-row"><div className="map-panel"><div className="panel-caption"><strong>{t('map')}</strong><div className="map-totals" aria-label={t('scanSizes')} title={progress.unknown ? t('unknownDisk', { count: progress.unknown.toLocaleString(language) }) : t('scanTotal')}><span>{t('disk')} <b>{scanId === null ? '—' : (progress.unknown ? '≥ ' : '') + formatBytes(progress.diskSize)}</b></span><span>{t('logical')} <b>{scanId === null ? '—' : formatBytes(progress.logicalSize)}</b></span></div></div><Treemap key={`${scanId}:${nodeId}`} items={mapItems} branches={branches} t={t} theme={view.theme} metric={metric} fontSize={view.font} selected={selectedNode?.id} onActivate={mapClick} onSelect={setSelected} onContext={context} onCollapse={ids => setExpanded(old => ids.reduce((next, id) => collapseExpanded(next, id, allNodes), old))} /><div className="map-legend"><span>{t('legend', { metric: metricLabel })}</span>{(tree?.truncated || tree?.branches.some(b => b.truncated)) && <span>{t('merged')}</span>}</div></div>
