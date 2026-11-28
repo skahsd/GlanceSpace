@@ -64,7 +64,7 @@ const { chromium } = require('playwright');
   async function checkCopyBubble(message, x, y) {
    const bubble = page.locator('.copy-feedback').getByText(message, {exact:true});
    await bubble.waitFor();
-   const bounds = await bubble.boundingBox();
+   const bounds = await page.locator('.copy-feedback').boundingBox();
    assert.ok(bounds && bounds.x >= 7 && bounds.y >= 7 && bounds.x + bounds.width <= width - 7 && bounds.y + bounds.height <= height - 7, 'copy feedback fits inside the window');
    const dx = Math.max(bounds.x - x, x - bounds.x - bounds.width, 0);
    const dy = Math.max(bounds.y - y, y - bounds.y - bounds.height, 0);
@@ -101,7 +101,17 @@ const { chromium } = require('playwright');
    await page.mouse.click(x, y);
    await checkCopyBubble('路径已复制', x, y);
    assert.ok(await page.evaluate(() => window.__copiedPath === window.__nodes.find(node => node.id === 3).path));
-   await page.locator('.copy-feedback span').waitFor({state:'hidden',timeout:2000});
+   const firstBubble = await page.locator('.copy-bubble').elementHandle();
+   await page.locator('.detail-path').press('Enter');
+   await firstBubble.waitForElementState('hidden');
+   await page.locator('.copy-bubble').getByText('路径已复制', {exact:true}).waitFor();
+   await page.locator('.copy-bubble').waitFor({state:'hidden',timeout:2000});
+   await page.emulateMedia({reducedMotion:'reduce'});
+   await page.locator('.detail-path').press('Enter');
+   await page.locator('.copy-bubble').waitFor();
+   assert.equal(await page.locator('.copy-bubble').evaluate(bubble => getComputedStyle(bubble).animationName), 'none');
+   await page.locator('.copy-bubble').waitFor({state:'hidden',timeout:2000});
+   await page.emulateMedia({reducedMotion:'no-preference'});
   }
   await page.getByRole('button',{name:'仅矩阵',exact:true}).click();await page.waitForTimeout(350);const only=await checkLayout(true);assert.deepEqual(only.overflow,[]);assert.ok(only.hidden&&only.rootFit);assert.equal(await page.locator('.list-panel').isVisible(),false);
   p=await point(3);await page.mouse.click(p.x,p.y,{button:'right'});await page.keyboard.press('Escape');assert.equal(await page.locator('.map-only').count(),1,'Escape closes menu before exiting mode');await page.keyboard.press('Escape');assert.equal(await page.locator('.map-only').count(),0);

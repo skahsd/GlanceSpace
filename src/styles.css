@@ -41,6 +41,7 @@
   --muted-strong: #a8b9c8;
   --accent-soft: #183b3a;
   --accent-strong: #a0edc8;
+  --warning: #f3cc82;
   background: var(--app-bg);
   color: var(--text);
   color-scheme: dark;
@@ -104,6 +105,9 @@
 .app-shell .button.primary:hover:not(:disabled) {
   transform: translateY(-1px);
 }
+.app-shell .button.primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
 .app-shell .button.subtle,
 .app-shell .icon-button,
 .app-shell .navigation button {
@@ -144,8 +148,9 @@
   border: 1px solid var(--line-strong);
   background: var(--surface);
 }
-.app-shell .segmented button {
+.app-shell :is(.segmented, .choice-options) button {
   color: var(--muted-strong);
+  transition: background-color 140ms ease, color 140ms ease;
 }
 .app-shell .segmented button.chosen {
   background: var(--accent-soft);
@@ -242,24 +247,48 @@
   pointer-events: none;
   font-size: var(--font-small, 12px);
 }
-.copy-feedback span {
-  display: block;
-  padding: 8px 12px;
+.copy-bubble {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
   border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  box-shadow: 0 6px 16px #0002;
-}
-.copy-feedback .warning {
+  border-radius: 9px;
   background: var(--surface-raised);
   color: var(--text);
+  box-shadow: 0 4px 12px #0003;
+  line-height: 1.4;
+  animation: copy-bubble-life 1s linear both;
+}
+.copy-bubble-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 16px;
+  height: 16px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  color: var(--accent-strong);
+  font-weight: 700;
+  line-height: 1;
+}
+.copy-bubble.warning .copy-bubble-icon {
+  color: var(--warning);
+}
+@keyframes copy-bubble-life {
+  0% { opacity: 0; transform: scale(.96); animation-timing-function: ease-out; }
+  12%, 86% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
 }
 .app-shell .context-menu,
 .app-shell .view-popover {
   border-color: var(--line-strong);
   background: var(--surface-raised);
   box-shadow: 0 14px 32px #0004;
+  animation: menu-appear 120ms ease-out both;
+}
+@keyframes menu-appear {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .app-shell .view-popover {
   width: 246px;
@@ -300,7 +329,6 @@
 .app-shell .choice-options button {
   padding: 5px 8px;
   border-radius: 4px;
-  color: var(--muted-strong);
   font-size: var(--font-small, 12px);
 }
 .app-shell .choice-options button.chosen {

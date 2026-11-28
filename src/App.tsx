@@ -18,7 +18,7 @@ const phaseLabels: Partial<Record<string, MessageKey>> = {
   cancelled: 'cancelled', completed: 'completed', failed: 'failed',
 };
 const canDrill = (node: FsNode) => node.id >= 0 && node.isDir && node.state !== 'skipped';
-type CopyFeedback = { succeeded: boolean; x: number; y: number };
+type CopyFeedback = { request: number; succeeded: boolean; x: number; y: number };
 const fontLabels = ['small', 'standard', 'large'] as const;
 const terminal = (p: Progress) => ['idle', 'completed', 'cancelled', 'failed'].includes(p.phase);
 const nodeState = (node: FsNode): MessageKey => node.state === 'skipped' ? 'skipped' : node.state === 'partial' ? 'partial' : !node.complete ? 'incomplete' : 'counted';
@@ -234,7 +234,7 @@ export default function App() {
     } catch {
       // The clipboard can be unavailable or refuse a write.
     }
-    if (request === copyRequest.current) setCopyFeedback({ succeeded, x, y });
+    if (request === copyRequest.current) setCopyFeedback({ request, succeeded, x, y });
   }
   async function runMenuAction(action: MenuAction, target: MenuTarget) {
     closeMenu();
@@ -334,9 +334,10 @@ export default function App() {
         closeMenu();
       }} onAction={runMenuAction} />}
     <div ref={copyBubble} className="copy-feedback" role="status">
-      {copyFeedback && <span className={copyFeedback.succeeded ? '' : 'warning'}>
-        {t(copyFeedback.succeeded ? 'pathCopied' : 'copyFailed')}
-      </span>}
+      {copyFeedback && <div key={copyFeedback.request} className={`copy-bubble${copyFeedback.succeeded ? '' : ' warning'}`}>
+        <span className="copy-bubble-icon" aria-hidden="true">{copyFeedback.succeeded ? '✓' : '!'}</span>
+        <span>{t(copyFeedback.succeeded ? 'pathCopied' : 'copyFailed')}</span>
+      </div>}
     </div>
   </div>;
 }
